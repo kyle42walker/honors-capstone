@@ -1,8 +1,33 @@
 import tkinter as tk
 from tkinter import ttk
+from typing import Protocol
+
+class Presenter(Protocol):
+    def get_output_pin_states(self) -> None:
+        ...
+
+    def update_mode(self, mode: str) -> None:
+        ...
+
+    
+
+class Safety_IO_Tester_GUI(tk.Tk):
+    def __init__(self) -> None:
+        super().__init__()
+        self.title('Safety I/O Tester')
+        self.iconphoto(False, tk.PhotoImage(file='Resource/Images/brooks_logo.png'))
+
+    def init_ui(self, presenter: Presenter) -> None:
+        self.input_panels = ttk.Frame(self, padx=10, pady=10)
 
 
-class Application(ttk.Frame):
+
+
+
+
+
+
+class Application(tk.Tk):
 
     ''' The main GUI frame '''
 
@@ -32,13 +57,3 @@ class Panel_Mode_Select(tk.LabelFrame):
         tk.Label(self, text='Mode:').grid(row=0, column=0, sticky='E')
         ttk.Separator(self, orient='vertical').grid(row=0, column=1, pady=10, ipady=100)
         tk.Label(self, text='Mode:').grid(row=0, column=2, sticky='E')
-
-def main():
-    root = tk.Tk()
-    root.title('Safety I/O Tester')
-    root.iconphoto(False, tk.PhotoImage(file='Resource/Images/brooks_logo.png'))
-
-    app = Application(root)
-    app.mainloop()
-
-if __name__ == '__main__': main()
