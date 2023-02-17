@@ -17,11 +17,13 @@ class Presenter(Protocol):
     def toggle_mode_bit(self, bit: str) -> None:
         ...
 
+
 class View(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title(TITLE)
         self.iconphoto(False, tk.PhotoImage(file=BROOKS_LOGO_PATH))
+
 
     def init_gui(self, presenter: Presenter) -> None:
         self.frm_interactive = Interactive_Frame(self, presenter)
@@ -42,17 +44,23 @@ class Interactive_Frame(ttk.Frame):
         self.presenter = presenter
         self.create_panels()
 
+
     def create_panels(self) -> None:
         self.grid_row = tk.IntVar(self, 0)
         self.pnl_mode_select = Mode_Selection_Panel(self, self.presenter, self.grid_row)
+        self.pnl_emergency_stop = Emergency_Stop_Panel(self, self.presenter, self.grid_row)
 
         ttk.Separator(self, orient='vertical').grid(row=0, column=2, rowspan=self.grid_row.get()+1, sticky='NS')
+
 
     def increment_grid_row(self):
         self.grid_row.set(self.grid_row.get() + 1)
 
 
 class Mode_Selection_Panel():
+
+    ''' Mode selection controls '''
+
     def __init__(self, frame, presenter, grid_row):
         self.presenter = presenter
         self.grid_row = grid_row
@@ -144,3 +152,16 @@ class Mode_Selection_Panel():
             self.btn_a2_mode_bit['state'] = tk.DISABLED
             self.btn_b1_mode_bit['state'] = tk.DISABLED
             self.btn_b2_mode_bit['state'] = tk.DISABLED
+
+class Emergency_Stop_Panel():
+
+    ''' Emergency stop controls '''
+
+    def __init__(self, frame, presenter, grid_row):
+        self.presenter = presenter
+        self.grid_row = grid_row
+        self.frame = frame
+        self.create_widgets()
+
+    def create_widgets(self):
+        pass
