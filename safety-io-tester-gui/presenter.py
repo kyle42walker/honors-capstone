@@ -19,8 +19,11 @@ class Presenter:
     def set_mode(self, mode: str) -> None:
         print(mode)
 
-    def toggle_mode_bit(self, bit: str) -> None:
-        print(bit + ' toggled')
+    def toggle_mode_bit(self, bit_id: str) -> None:
+        print(bit_id + ' toggled')
+    
+    def trigger_e_stop(self, trigger_selection: str, delay_ms: str):
+        print(f'"{trigger_selection}" with delay of {delay_ms} ms')
 
     def run(self) -> None:
         self.view.init_gui(self)
