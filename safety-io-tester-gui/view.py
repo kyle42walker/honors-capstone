@@ -18,7 +18,7 @@ class Presenter(Protocol):
     def toggle_mode_bit(self, bit_id: str) -> None:
         ...
         
-    def trigger_e_stop(self, trigger_selection: str, delay_ms: str) -> None:
+    def trigger_e_stop(self, trigger_selection_index: int, delay_ms: str) -> None:
         ...
 
 
@@ -64,7 +64,7 @@ class Interactive_Split_Panel(ABC):
 
     ''' ABC for left-right split interactive panels '''
 
-    def __init__(self, parent, presenter, grid_row):
+    def __init__(self, parent: ttk.Frame, presenter: Presenter, grid_row: tk.IntVar) -> None:
         self.presenter = presenter
 
         padx = 10
@@ -84,12 +84,12 @@ class Interactive_Split_Panel(ABC):
 
 
     @abstractmethod
-    def create_left_widgets(self, frame):
+    def create_left_widgets(self, frame: ttk.Frame) -> None:
         pass
 
 
     @abstractmethod
-    def create_right_widgets(self, frame):
+    def create_right_widgets(self, frame: ttk.Frame) -> None:
         pass
 
 
@@ -97,11 +97,11 @@ class Mode_Selection_Panel(Interactive_Split_Panel):
 
     ''' Mode selection controls '''
 
-    def __init__(self, parent, presenter, grid_row):
+    def __init__(self, parent: ttk.Frame, presenter: Presenter, grid_row: tk.IntVar) -> None:
         super().__init__(parent, presenter, grid_row)
 
 
-    def create_left_widgets(self, frame):
+    def create_left_widgets(self, frame: ttk.Frame) -> None:
         # Mode selection via dropdown menu
         lbl_mode = ttk.Label(frame, text='Mode:')
         lbl_mode.grid(row=0, column=0, sticky='NW')
@@ -126,7 +126,7 @@ class Mode_Selection_Panel(Interactive_Split_Panel):
         self.presenter.set_mode(self.valid_modes[0])
 
 
-    def create_right_widgets(self, frame):
+    def create_right_widgets(self, frame: ttk.Frame) -> None:
         # Advanced bit toggling to set mode
         self.bit_toggling_enabled = tk.BooleanVar(frame)
 
@@ -171,7 +171,7 @@ class Mode_Selection_Panel(Interactive_Split_Panel):
         self.chk_mode_bit_toggled()
 
 
-    def chk_mode_bit_toggled(self):
+    def chk_mode_bit_toggled(self) -> None:
         if self.bit_toggling_enabled.get():
             self.opt_mode_dropdown['state'] = tk.DISABLED
             self.btn_a1_mode_bit['state'] = tk.NORMAL
@@ -190,11 +190,11 @@ class Emergency_Stop_Panel(Interactive_Split_Panel):
 
     ''' Emergency stop controls '''
 
-    def __init__(self, parent, presenter, grid_row):
+    def __init__(self, parent: ttk.Frame, presenter: Presenter, grid_row: tk.IntVar) -> None:
         super().__init__(parent, presenter, grid_row)
 
 
-    def create_left_widgets(self, frame):
+    def create_left_widgets(self, frame: ttk.Frame) -> None:
         lbl_e_stop = ttk.Label(frame, text='E-Stop:')
         lbl_e_stop.grid(row=0, column=0, sticky='NW')
         
@@ -203,14 +203,19 @@ class Emergency_Stop_Panel(Interactive_Split_Panel):
             frame,
             text='E-Stop',
             command=lambda: self.presenter.trigger_e_stop(
-                self.e_stop_trigger_selection.get(), 
+                self.dual_channel_trigger_states.index(
+                    self.e_stop_trigger_selection.get()
+                ),
                 self.e_stop_delay_ms.get()
             )
         )
         self.btn_e_stop.grid(row=1, column=0)
 
 
-    def create_right_widgets(self, frame):
+    def create_right_widgets(self, frame: ttk.Frame) -> None:
+
+        # NOTE: The order of this list is important.
+        # The presenter and other functions in this class depend on this order
         self.dual_channel_trigger_states = [
             'A and B on simultaneously',
             'A on after B by [Delay] ms',
@@ -249,8 +254,10 @@ class Emergency_Stop_Panel(Interactive_Split_Panel):
         ttk.Label(frame, text='ms').grid(row=1, column=2, sticky='W')
 
 
-    def toggle_delay_entry_state(self, trigger_selection: str):
-        if 'ms' in trigger_selection:
+    def toggle_delay_entry_state(self, trigger_selection: str) -> None:
+        if trigger_selection == self.dual_channel_trigger_states[1] or \
+            trigger_selection == self.dual_channel_trigger_states[2]:
+
             self.e_stop_delay_ms.set('0')
             self.ent_e_stop_delay['state'] = tk.NORMAL
             self.ent_e_stop_delay.selection_range(0, tk.END)
@@ -261,7 +268,7 @@ class Emergency_Stop_Panel(Interactive_Split_Panel):
             self.ent_e_stop_delay['state'] = tk.DISABLED
 
 
-    def validate_delay_entry(self, value: str):
+    def validate_delay_entry(self, value: str) -> None:
         if value:
             try:
                 int(value)
