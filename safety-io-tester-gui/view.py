@@ -1,17 +1,16 @@
 import tkinter as tk
 from tkinter import ttk
 from typing import Protocol
+from abc import ABC, abstractmethod
 
 
 TITLE = 'Safety I/O Tester'
 BROOKS_LOGO_PATH = 'Resource/Images/brooks_logo.png'
-PADX = 10
-PADY = 10
 
 
 class Presenter(Protocol):
-    def get_output_pin_states(self) -> None:
-        ...
+    # def get_output_pin_states(self) -> None:
+    #     ...
 
     def set_mode(self, mode: str) -> None:
         ...
@@ -19,7 +18,7 @@ class Presenter(Protocol):
     def toggle_mode_bit(self, bit_id: str) -> None:
         ...
         
-    def trigger_e_stop(self, trigger_selection: str, delay_ms: str):
+    def trigger_e_stop(self, trigger_selection: str, delay_ms: str) -> None:
         ...
 
 
@@ -50,8 +49,6 @@ class Interactive_Frame(ttk.Frame):
     def __init__(self, parent, presenter, **kwargs) -> None:
         super().__init__(parent, **kwargs)
         self.presenter = presenter
-        self.BASIC_COLUMN = 0
-        self.ADVANCED_COLUMN = 2
         self.create_panels()
 
 
@@ -63,31 +60,48 @@ class Interactive_Frame(ttk.Frame):
         ttk.Separator(self, orient='vertical').grid(row=0, column=1, rowspan=grid_row.get() + 1, sticky='NS')
 
 
-    # def increment_grid_row(self):
-    #     self.grid_row.set(self.grid_row.get() + 1)
+class Interactive_Split_Panel(ABC):
 
-
-class Mode_Selection_Panel():
-
-    ''' Mode selection controls '''
+    ''' ABC for left-right split interactive panels '''
 
     def __init__(self, parent, presenter, grid_row):
         self.presenter = presenter
 
-        frm_basic = ttk.Frame(parent)
-        frm_basic.grid(row=grid_row.get(), column=parent.BASIC_COLUMN, padx=PADX, pady=PADY)
-        frm_advanced = ttk.Frame(parent)
-        frm_advanced.grid(row=grid_row.get(), column=parent.ADVANCED_COLUMN, padx=PADX, pady=PADY)
+        padx = 10
+        pady = 10
+
+        frm_left = ttk.Frame(parent)
+        frm_left.grid(row=grid_row.get(), column=0, padx=padx, pady=pady)
+        frm_right = ttk.Frame(parent)
+        frm_right.grid(row=grid_row.get(), column=2, padx=padx, pady=pady)
         grid_row.set(grid_row.get() + 1)
 
         ttk.Separator(parent, orient='horizontal').grid(row=grid_row.get(), column=0, columnspan=3, sticky='EW')
         grid_row.set(grid_row.get() + 1)
 
-        self.create_basic_widgets(frm_basic)
-        self.create_advanced_widgets(frm_advanced)
+        self.create_left_widgets(frm_left)
+        self.create_right_widgets(frm_right)
 
 
-    def create_basic_widgets(self, frame):
+    @abstractmethod
+    def create_left_widgets(self, frame):
+        pass
+
+
+    @abstractmethod
+    def create_right_widgets(self, frame):
+        pass
+
+
+class Mode_Selection_Panel(Interactive_Split_Panel):
+
+    ''' Mode selection controls '''
+
+    def __init__(self, parent, presenter, grid_row):
+        super().__init__(parent, presenter, grid_row)
+
+
+    def create_left_widgets(self, frame):
         # Mode selection via dropdown menu
         lbl_mode = ttk.Label(frame, text='Mode:')
         lbl_mode.grid(row=0, column=0, sticky='NW')
@@ -112,7 +126,7 @@ class Mode_Selection_Panel():
         self.presenter.set_mode(self.valid_modes[0])
 
 
-    def create_advanced_widgets(self, frame):
+    def create_right_widgets(self, frame):
         # Advanced bit toggling to set mode
         self.bit_toggling_enabled = tk.BooleanVar(frame)
 
@@ -172,27 +186,15 @@ class Mode_Selection_Panel():
             self.btn_b2_mode_bit['state'] = tk.DISABLED
 
 
-class Emergency_Stop_Panel():
+class Emergency_Stop_Panel(Interactive_Split_Panel):
 
     ''' Emergency stop controls '''
 
     def __init__(self, parent, presenter, grid_row):
-        self.presenter = presenter
-
-        frm_basic = ttk.Frame(parent)
-        frm_basic.grid(row=grid_row.get(), column=parent.BASIC_COLUMN, padx=PADX, pady=PADY)
-        frm_advanced = ttk.Frame(parent)
-        frm_advanced.grid(row=grid_row.get(), column=parent.ADVANCED_COLUMN, padx=PADX, pady=PADY)
-        grid_row.set(grid_row.get() + 1)
-
-        ttk.Separator(parent, orient='horizontal').grid(row=grid_row.get(), column=0, columnspan=3, sticky='EW')
-        grid_row.set(grid_row.get() + 1)
-
-        self.create_basic_widgets(frm_basic)
-        self.create_advanced_widgets(frm_advanced)
+        super().__init__(parent, presenter, grid_row)
 
 
-    def create_basic_widgets(self, frame):
+    def create_left_widgets(self, frame):
         lbl_e_stop = ttk.Label(frame, text='E-Stop:')
         lbl_e_stop.grid(row=0, column=0, sticky='NW')
         
@@ -208,7 +210,7 @@ class Emergency_Stop_Panel():
         self.btn_e_stop.grid(row=1, column=0)
 
 
-    def create_advanced_widgets(self, frame):
+    def create_right_widgets(self, frame):
         self.dual_channel_trigger_states = [
             'A and B on simultaneously',
             'A on after B by [Delay] ms',
