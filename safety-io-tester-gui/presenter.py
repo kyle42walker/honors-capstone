@@ -48,6 +48,9 @@ class Presenter:
             case 4:
                 print("interlock b only")
 
+    def measure_heartbeat(self) -> None:
+        print("measuring heartbeat...")
+
     def run(self) -> None:
         self.view.init_gui(self)
         self.view.mainloop()

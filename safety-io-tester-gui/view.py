@@ -24,6 +24,9 @@ class Presenter(Protocol):
     def trigger_interlock(self, trigger_selection_index: int, delay_ms: str) -> None:
         ...
 
+    def measure_heartbeat(self) -> None:
+        ...
+
 
 class View(tk.Tk):
     def __init__(self) -> None:
@@ -60,8 +63,10 @@ class Interactive_Frame(ttk.Frame):
         Interlock_Panel(self, self.presenter, grid_row=grid_row)
 
         ttk.Separator(self, orient="vertical").grid(
-            row=0, column=1, rowspan=grid_row.get() + 1, sticky="NS"
+            row=0, column=1, rowspan=grid_row.get(), sticky="NS"
         )
+
+        Heartbeat_Panel(self, self.presenter, grid_row=grid_row)
 
 
 class Interactive_Split_Panel(ABC):
@@ -197,7 +202,7 @@ class Emergency_Stop_Panel(Interactive_Split_Panel):
         lbl_e_stop.grid(row=0, column=0, sticky="NW")
 
         # TODO: Use image (big red circle/polygon) for e-stop button
-        self.btn_e_stop = ttk.Button(
+        btn_e_stop = ttk.Button(
             frame,
             text="E-Stop",
             command=lambda: self.presenter.trigger_e_stop(
@@ -207,7 +212,7 @@ class Emergency_Stop_Panel(Interactive_Split_Panel):
                 self.e_stop_delay_ms.get(),
             ),
         )
-        self.btn_e_stop.grid(row=1, column=0)
+        btn_e_stop.grid(row=1, column=0)
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
         # NOTE: The order of this list is important.
@@ -221,15 +226,15 @@ class Emergency_Stop_Panel(Interactive_Split_Panel):
         ]
         self.e_stop_trigger_selection = tk.StringVar(frame)
 
-        self.opt_e_stop_dropdown = ttk.OptionMenu(
+        opt_e_stop_dropdown = ttk.OptionMenu(
             frame,
             self.e_stop_trigger_selection,
             self.dual_channel_trigger_states[0],
             *self.dual_channel_trigger_states,
             command=self.toggle_delay_entry_state,
         )
-        self.opt_e_stop_dropdown.config(width=25)
-        self.opt_e_stop_dropdown.grid(row=0, column=0, columnspan=3)
+        opt_e_stop_dropdown.config(width=25)
+        opt_e_stop_dropdown.grid(row=0, column=0, columnspan=3)
 
         self.e_stop_delay_ms = tk.StringVar(frame, "")
 
@@ -287,7 +292,7 @@ class Interlock_Panel(Interactive_Split_Panel):
         lbl_interlock.grid(row=0, column=0, sticky="NW")
 
         # TODO: Use image (big yellow circle/polygon) for interlock button
-        self.btn_interlock = ttk.Button(
+        btn_interlock = ttk.Button(
             frame,
             text="Interlock",
             command=lambda: self.presenter.trigger_interlock(
@@ -297,7 +302,7 @@ class Interlock_Panel(Interactive_Split_Panel):
                 self.interlock_delay_ms.get(),
             ),
         )
-        self.btn_interlock.grid(row=1, column=0)
+        btn_interlock.grid(row=1, column=0)
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
         # NOTE: The order of this list is important.
@@ -311,15 +316,15 @@ class Interlock_Panel(Interactive_Split_Panel):
         ]
         self.interlock_trigger_selection = tk.StringVar(frame)
 
-        self.opt_interlock_dropdown = ttk.OptionMenu(
+        opt_interlock_dropdown = ttk.OptionMenu(
             frame,
             self.interlock_trigger_selection,
             self.dual_channel_trigger_states[0],
             *self.dual_channel_trigger_states,
             command=self.toggle_delay_entry_state,
         )
-        self.opt_interlock_dropdown.config(width=25)
-        self.opt_interlock_dropdown.grid(row=0, column=0, columnspan=3)
+        opt_interlock_dropdown.config(width=25)
+        opt_interlock_dropdown.grid(row=0, column=0, columnspan=3)
 
         self.interlock_delay_ms = tk.StringVar(frame, "")
 
@@ -361,3 +366,32 @@ class Interlock_Panel(Interactive_Split_Panel):
             except ValueError:
                 return False
         return True
+
+
+class Heartbeat_Panel(Interactive_Split_Panel):
+
+    """Heartbeat monitoring controls"""
+
+    def __init__(
+        self, parent: ttk.Frame, presenter: Presenter, grid_row: tk.IntVar
+    ) -> None:
+        super().__init__(parent, presenter, grid_row)
+
+    def create_left_widgets(self, frame: ttk.Frame) -> None:
+        lbl_heartbeat = ttk.Label(frame, text="Hearbeat:")
+        lbl_heartbeat.grid(row=0, column=0, sticky="NW")
+
+        self.btn_measure_hearbeat = ttk.Button(
+            frame, text="Measure Hearbeat", command=self.presenter.measure_heartbeat
+        )
+        self.btn_measure_hearbeat.grid(row=1, column=0)
+
+    def create_right_widgets(self, frame: ttk.Frame) -> None:
+        ttk.Label(frame, text="Channel A: ").grid(row=0, column=0)
+        self.heart_beat_a = ttk.Label(frame, text="NA", relief="solid", borderwidth=1)
+        self.heart_beat_a.grid(row=0, column=1)
+        ttk.Label(frame, text="Hz").grid(row=0, column=2)
+        ttk.Label(frame, text="Channel B: ").grid(row=1, column=0)
+        self.heart_beat_b = ttk.Label(frame, text="NA", relief="solid", borderwidth=1)
+        self.heart_beat_b.grid(row=1, column=1)
+        ttk.Label(frame, text="Hz").grid(row=1, column=2)
