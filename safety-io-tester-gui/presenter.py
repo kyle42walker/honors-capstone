@@ -35,6 +35,19 @@ class Presenter:
             case 4:
                 print("e_stop b only")
 
+    def trigger_interlock(self, trigger_selection_index: int, delay_ms: str) -> None:
+        match (trigger_selection_index):
+            case 0:
+                print("both interlocks triggered")
+            case 1:
+                print(f"interlock a then b, {delay_ms} ms delay")
+            case 2:
+                print(f"interlock b then a, {delay_ms} ms delay")
+            case 3:
+                print("interlock a only")
+            case 4:
+                print("interlock b only")
+
     def run(self) -> None:
         self.view.init_gui(self)
         self.view.mainloop()
