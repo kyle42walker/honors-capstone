@@ -82,9 +82,11 @@ class Interactive_Split_Panel(ABC):
         pady = 10
 
         frm_left = ttk.Frame(parent)
-        frm_left.grid(row=grid_row.get(), column=0, padx=padx, pady=pady)
+        frm_left.grid(row=grid_row.get(), column=0, padx=padx, pady=pady, sticky="NESW")
         frm_right = ttk.Frame(parent)
-        frm_right.grid(row=grid_row.get(), column=2, padx=padx, pady=pady)
+        frm_right.grid(
+            row=grid_row.get(), column=2, padx=padx, pady=pady, sticky="NESW"
+        )
         grid_row.set(grid_row.get() + 1)
 
         ttk.Separator(parent, orient="horizontal").grid(
@@ -134,7 +136,7 @@ class Mode_Selection_Panel(Interactive_Split_Panel):
             command=self.presenter.set_mode,
         )
         self.opt_mode_dropdown.config(width=10)
-        self.opt_mode_dropdown.grid(row=1, column=0)
+        self.opt_mode_dropdown.grid(row=1, column=0, sticky="W")
         self.presenter.set_mode(self.valid_modes[0])
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
@@ -147,7 +149,7 @@ class Mode_Selection_Panel(Interactive_Split_Panel):
             variable=self.bit_toggling_enabled,
             command=self.chk_mode_bit_toggled,
         )
-        chk_mode_bit_toggle.grid(row=0, column=0, columnspan=4)
+        chk_mode_bit_toggle.grid(row=0, column=0, columnspan=2)
 
         # Buttons to toggle mode bits (A1, A2, B1, B2)
         self.btn_a1_mode_bit = ttk.Button(
@@ -158,17 +160,17 @@ class Mode_Selection_Panel(Interactive_Split_Panel):
         self.btn_a2_mode_bit = ttk.Button(
             frame, text="A2", command=lambda: self.presenter.toggle_mode_bit("A2")
         )
-        self.btn_a2_mode_bit.grid(row=1, column=1)
+        self.btn_a2_mode_bit.grid(row=2, column=0)
 
         self.btn_b1_mode_bit = ttk.Button(
             frame, text="B1", command=lambda: self.presenter.toggle_mode_bit("B1")
         )
-        self.btn_b1_mode_bit.grid(row=1, column=2)
+        self.btn_b1_mode_bit.grid(row=1, column=1)
 
         self.btn_b2_mode_bit = ttk.Button(
             frame, text="B2", command=lambda: self.presenter.toggle_mode_bit("B2")
         )
-        self.btn_b2_mode_bit.grid(row=1, column=3)
+        self.btn_b2_mode_bit.grid(row=2, column=1)
 
         # Set initial button states
         self.chk_mode_bit_toggled()
@@ -212,7 +214,7 @@ class Emergency_Stop_Panel(Interactive_Split_Panel):
                 self.e_stop_delay_ms.get(),
             ),
         )
-        btn_e_stop.grid(row=1, column=0)
+        btn_e_stop.grid(row=1, column=0, sticky="W")
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
         # NOTE: The order of this list is important.
@@ -302,7 +304,7 @@ class Interlock_Panel(Interactive_Split_Panel):
                 self.interlock_delay_ms.get(),
             ),
         )
-        btn_interlock.grid(row=1, column=0)
+        btn_interlock.grid(row=1, column=0, sticky="W")
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
         # NOTE: The order of this list is important.
@@ -384,7 +386,7 @@ class Heartbeat_Panel(Interactive_Split_Panel):
         self.btn_measure_hearbeat = ttk.Button(
             frame, text="Measure Hearbeat", command=self.presenter.measure_heartbeat
         )
-        self.btn_measure_hearbeat.grid(row=1, column=0)
+        self.btn_measure_hearbeat.grid(row=1, column=0, sticky="W")
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
         ttk.Label(frame, text="Channel A: ").grid(row=0, column=0)
