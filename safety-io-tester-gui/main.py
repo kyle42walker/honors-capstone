@@ -2,6 +2,7 @@ from model import Model
 from view import View
 from presenter import Presenter
 
+
 def main():
     model = Model()
     view = View()
@@ -9,4 +10,5 @@ def main():
     presenter.run()
 
 
-if __name__ == '__main__': main()
+if __name__ == "__main__":
+    main()

@@ -20,20 +20,20 @@ class Presenter:
         print(mode)
 
     def toggle_mode_bit(self, bit_id: str) -> None:
-        print(bit_id + ' toggled')
-    
+        print(bit_id + " toggled")
+
     def trigger_e_stop(self, trigger_selection_index: int, delay_ms: str) -> None:
-        match(trigger_selection_index):
+        match (trigger_selection_index):
             case 0:
-                print('both e_stops triggered')
+                print("both e_stops triggered")
             case 1:
-                print(f'e_stop a then b, {delay_ms} ms delay')
+                print(f"e_stop a then b, {delay_ms} ms delay")
             case 2:
-                print(f'e_stop b then a, {delay_ms} ms delay')
+                print(f"e_stop b then a, {delay_ms} ms delay")
             case 3:
-                print('e_stop a only')
+                print("e_stop a only")
             case 4:
-                print('e_stop b only')
+                print("e_stop b only")
 
     def run(self) -> None:
         self.view.init_gui(self)
