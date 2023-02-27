@@ -27,6 +27,9 @@ class Presenter(Protocol):
     def measure_heartbeat(self) -> None:
         ...
 
+    def echo_string(self, message: str) -> None:
+        ...
+
 
 class View(tk.Tk):
     def __init__(self) -> None:
@@ -67,6 +70,7 @@ class Interactive_Frame(ttk.Frame):
         )
 
         Heartbeat_Panel(self, self.presenter, grid_row=grid_row)
+        Echo_String_Panel(self, self.presenter, grid_row=grid_row)
 
 
 class Interactive_Split_Panel(ABC):
@@ -397,3 +401,34 @@ class Heartbeat_Panel(Interactive_Split_Panel):
         self.heart_beat_b = ttk.Label(frame, text="NA", relief="solid", borderwidth=1)
         self.heart_beat_b.grid(row=1, column=1)
         ttk.Label(frame, text="Hz").grid(row=1, column=2)
+
+
+class Echo_String_Panel(Interactive_Split_Panel):
+
+    """Controls to send string to the LCD"""
+
+    def __init__(
+        self, parent: ttk.Frame, presenter: Presenter, grid_row: tk.IntVar
+    ) -> None:
+        super().__init__(parent, presenter, grid_row)
+
+    def create_left_widgets(self, frame: ttk.Frame) -> None:
+        lbl_echo_string = ttk.Label(frame, text="Echo String:")
+        lbl_echo_string.grid(row=0, column=0, sticky="NW")
+
+        self.btn_echo_string = ttk.Button(
+            frame,
+            text="Send to LCD",
+            command=lambda: self.presenter.echo_string(self.message.get()),
+        )
+        self.btn_echo_string.grid(row=1, column=0, sticky="W")
+
+    def create_right_widgets(self, frame: ttk.Frame) -> None:
+        self.message = tk.StringVar(frame)
+        self.ent_echo_string = ttk.Entry(
+            frame,
+            width=25,
+            justify="left",
+            textvariable=self.message,
+        )
+        self.ent_echo_string.grid(row=0, column=0, sticky="EW")

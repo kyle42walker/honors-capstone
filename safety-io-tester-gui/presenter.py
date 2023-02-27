@@ -51,6 +51,9 @@ class Presenter:
     def measure_heartbeat(self) -> None:
         print("measuring heartbeat...")
 
+    def echo_string(self, message: str) -> None:
+        print(f'message: "{message}"')
+
     def run(self) -> None:
         self.view.init_gui(self)
         self.view.mainloop()
