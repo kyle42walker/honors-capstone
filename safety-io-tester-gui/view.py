@@ -5,6 +5,8 @@ from typing import Protocol
 
 TITLE = 'Safety I/O Tester'
 BROOKS_LOGO_PATH = 'Resource/Images/brooks_logo.png'
+PADX = 10
+PADY = 10
 
 
 class Presenter(Protocol):
@@ -48,29 +50,47 @@ class Interactive_Frame(ttk.Frame):
     def __init__(self, parent, presenter, **kwargs) -> None:
         super().__init__(parent, **kwargs)
         self.presenter = presenter
+        self.BASIC_COLUMN = 0
+        self.ADVANCED_COLUMN = 2
         self.create_panels()
 
 
     def create_panels(self) -> None:
-        self.grid_row = tk.IntVar(self, 0)
-        self.pnl_mode_select = Mode_Selection_Panel(self, self.presenter, self.grid_row)
-        self.pnl_emergency_stop = Emergency_Stop_Panel(self, self.presenter, self.grid_row)
+        grid_row = tk.IntVar(self, 0)
+        self.pnl_mode_select = Mode_Selection_Panel(self, self.presenter, grid_row=grid_row)
+        self.pnl_emergency_stop = Emergency_Stop_Panel(self, self.presenter, grid_row=grid_row)
 
-        ttk.Separator(self, orient='vertical').grid(row=0, column=2, rowspan=self.grid_row.get()+1, sticky='NS')
+        ttk.Separator(self, orient='vertical').grid(row=0, column=1, rowspan=grid_row.get() + 1, sticky='NS')
 
 
-    def increment_grid_row(self):
-        self.grid_row.set(self.grid_row.get() + 1)
+    # def increment_grid_row(self):
+    #     self.grid_row.set(self.grid_row.get() + 1)
 
 
 class Mode_Selection_Panel():
 
     ''' Mode selection controls '''
 
-    def __init__(self, frame, presenter, grid_row):
+    def __init__(self, parent, presenter, grid_row):
         self.presenter = presenter
-        self.grid_row = grid_row
-        self.frame = frame
+
+        frm_basic = ttk.Frame(parent)
+        frm_basic.grid(row=grid_row.get(), column=parent.BASIC_COLUMN, padx=PADX, pady=PADY)
+        frm_advanced = ttk.Frame(parent)
+        frm_advanced.grid(row=grid_row.get(), column=parent.ADVANCED_COLUMN, padx=PADX, pady=PADY)
+        grid_row.set(grid_row.get() + 1)
+
+        ttk.Separator(parent, orient='horizontal').grid(row=grid_row.get(), column=0, columnspan=3, sticky='EW')
+        grid_row.set(grid_row.get() + 1)
+
+        self.create_basic_widgets(frm_basic)
+        self.create_advanced_widgets(frm_advanced)
+
+
+    def create_basic_widgets(self, frame):
+        # Mode selection via dropdown menu
+        lbl_mode = ttk.Label(frame, text='Mode:')
+        lbl_mode.grid(row=0, column=0, sticky='NW')
 
         self.valid_modes = [
             'Automatic',
@@ -78,77 +98,63 @@ class Mode_Selection_Panel():
             'Manual',
             'Mute',
         ]
-
-        self.mode_selection = tk.StringVar(self.frame)
-
-        self.bit_toggling_enabled = tk.BooleanVar(self.frame)
-
-        self.create_widgets()
-
-
-    def create_widgets(self):
-        # Mode selection via dropdown menu
-        lbl_mode = ttk.Label(self.frame, text='Mode:')
-        lbl_mode.grid(row=self.grid_row.get(), column=0, sticky='E')
+        self.mode_selection = tk.StringVar(frame)
 
         self.opt_mode_dropdown = ttk.OptionMenu(
-            self.frame,
+            frame,
             self.mode_selection,
             self.valid_modes[0],
             *self.valid_modes,
             command=self.presenter.set_mode
         )
         self.opt_mode_dropdown.config(width=10)
-        self.opt_mode_dropdown.grid(row=self.grid_row.get(), column=1, sticky='E')
+        self.opt_mode_dropdown.grid(row=1, column=0)
         self.presenter.set_mode(self.valid_modes[0])
 
+
+    def create_advanced_widgets(self, frame):
         # Advanced bit toggling to set mode
+        self.bit_toggling_enabled = tk.BooleanVar(frame)
+
         chk_mode_bit_toggle = ttk.Checkbutton(
-            self.frame,
+            frame,
             text='Enable Mode Bit Toggling',
             variable=self.bit_toggling_enabled,
             command=self.chk_mode_bit_toggled
         )
-        chk_mode_bit_toggle.grid(row=self.grid_row.get(), column=3, columnspan=4)
-
-        self.frame.increment_grid_row()
+        chk_mode_bit_toggle.grid(row=0, column=0, columnspan=4)
 
         # Buttons to toggle mode bits (A1, A2, B1, B2)
         self.btn_a1_mode_bit = ttk.Button(
-            self.frame,
+            frame,
             text = 'A1',
-            state = tk.DISABLED,
             command = lambda: self.presenter.toggle_mode_bit('A1')
         )
-        self.btn_a1_mode_bit.grid(row=self.grid_row.get(), column=3)
+        self.btn_a1_mode_bit.grid(row=1, column=0)
         
         self.btn_a2_mode_bit = ttk.Button(
-            self.frame,
+            frame,
             text = 'A2',
-            state = tk.DISABLED,
             command = lambda: self.presenter.toggle_mode_bit('A2')
         )
-        self.btn_a2_mode_bit.grid(row=self.grid_row.get(), column=4)
+        self.btn_a2_mode_bit.grid(row=1, column=1)
         
         self.btn_b1_mode_bit = ttk.Button(
-            self.frame,
+            frame,
             text = 'B1',
-            state = tk.DISABLED,
             command = lambda: self.presenter.toggle_mode_bit('B1')
         )
-        self.btn_b1_mode_bit.grid(row=self.grid_row.get(), column=5)
+        self.btn_b1_mode_bit.grid(row=1, column=2)
         
         self.btn_b2_mode_bit =  ttk.Button(
-            self.frame,
+            frame,
             text = 'B2',
-            state = tk.DISABLED,
             command = lambda: self.presenter.toggle_mode_bit('B2')
         )
-        self.btn_b2_mode_bit.grid(row=self.grid_row.get(), column=6)
+        self.btn_b2_mode_bit.grid(row=1, column=3)
 
-        self.frame.increment_grid_row()
-        ttk.Separator(self.frame, orient='horizontal').grid(row=self.grid_row.get(), column=0, columnspan=7, sticky='EW')
-        self.frame.increment_grid_row()
+        # Set initial button states
+        self.chk_mode_bit_toggled()
 
 
     def chk_mode_bit_toggled(self):
@@ -170,64 +176,88 @@ class Emergency_Stop_Panel():
 
     ''' Emergency stop controls '''
 
-    def __init__(self, frame, presenter, grid_row):
+    def __init__(self, parent, presenter, grid_row):
         self.presenter = presenter
-        self.grid_row = grid_row
-        self.frame = frame
+
+        frm_basic = ttk.Frame(parent)
+        frm_basic.grid(row=grid_row.get(), column=parent.BASIC_COLUMN, padx=PADX, pady=PADY)
+        frm_advanced = ttk.Frame(parent)
+        frm_advanced.grid(row=grid_row.get(), column=parent.ADVANCED_COLUMN, padx=PADX, pady=PADY)
+        grid_row.set(grid_row.get() + 1)
+
+        ttk.Separator(parent, orient='horizontal').grid(row=grid_row.get(), column=0, columnspan=3, sticky='EW')
+        grid_row.set(grid_row.get() + 1)
+
+        self.create_basic_widgets(frm_basic)
+        self.create_advanced_widgets(frm_advanced)
+
+
+    def create_basic_widgets(self, frame):
+        lbl_e_stop = ttk.Label(frame, text='E-Stop:')
+        lbl_e_stop.grid(row=0, column=0, sticky='NW')
         
+        # TODO: Use image (big red circle/polygon) for e-stop button
+        self.btn_e_stop = ttk.Button(
+            frame,
+            text='E-Stop',
+            command=lambda: self.presenter.trigger_e_stop(
+                self.e_stop_trigger_selection.get(), 
+                self.e_stop_delay_ms.get()
+            )
+        )
+        self.btn_e_stop.grid(row=1, column=0)
+
+
+    def create_advanced_widgets(self, frame):
         self.dual_channel_trigger_states = [
             'A and B on simultaneously',
             'A on after B by [Delay] ms',
             'B on after A by [Delay] ms',
-            'A on, B off',
-            'A off, B on',
+            'A on and B off',
+            'B on and A off',
         ]
-        self.e_stop_trigger_selection = tk.StringVar(self.frame)
-        
-        self.e_stop_delay_ms = tk.StringVar(self.frame, '')
-
-        self.create_widgets()
-
-    def create_widgets(self):
-        lbl_e_stop = ttk.Label(self.frame, text='E-Stop:')
-        lbl_e_stop.grid(row=self.grid_row.get(), column=0, columnspan=2, sticky='EW')
-        self.frame.increment_grid_row()
-        
-        # TODO: Use image (big red circle/polygon) for e-stop button
-        self.btn_e_stop = ttk.Button(
-            self.frame,
-            text='E-Stop',
-            command = lambda: self.presenter.trigger_e_stop(self.e_stop_trigger_selection.get(), self.e_stop_delay_ms.get()),
-        )
-        self.btn_e_stop.grid(row=self.grid_row.get(), column=0, columnspan=2,sticky='')
+        self.e_stop_trigger_selection = tk.StringVar(frame)
 
         self.opt_e_stop_dropdown = ttk.OptionMenu(
-            self.frame,
+            frame,
             self.e_stop_trigger_selection,
             self.dual_channel_trigger_states[0],
             *self.dual_channel_trigger_states,
             command=self.toggle_delay_entry_state,
         )
         self.opt_e_stop_dropdown.config(width=25)
-        self.opt_e_stop_dropdown.grid(row=self.grid_row.get(), column=3, columnspan=4, sticky='')
+        self.opt_e_stop_dropdown.grid(row=0, column=0, columnspan=3)
 
-        self.frame.increment_grid_row()
+        self.e_stop_delay_ms = tk.StringVar(frame, '')
 
-        ttk.Label(self.frame, text='Delay: ').grid(row=self.grid_row.get(), column=3, sticky='E')
-        vcmd = (self.frame.register(self.validate_delay_entry), '%P')
-        self.ent_e_stop_delay = ttk.Entry(self.frame, textvariable=self.e_stop_delay_ms, state=tk.DISABLED, validate='key', validatecommand=vcmd)
-        self.ent_e_stop_delay.grid(row=self.grid_row.get(), column=4, columnspan=2, sticky='')
-        ttk.Label(self.frame, text='ms').grid(row=self.grid_row.get(), column=6, sticky='W')
+        ttk.Label(frame, text='Delay: ').grid(row=1, column=0, sticky='E')
 
-        self.frame.increment_grid_row()
+        vcmd = (frame.register(self.validate_delay_entry), '%P')
+        self.ent_e_stop_delay = ttk.Entry(
+            frame,
+            width=2,
+            justify='right',
+            textvariable=self.e_stop_delay_ms,
+            state=tk.DISABLED,
+            validate='key',
+            validatecommand=vcmd
+        )
+        self.ent_e_stop_delay.grid(row=1, column=1, sticky='EW')
+
+        ttk.Label(frame, text='ms').grid(row=1, column=2, sticky='W')
+
 
     def toggle_delay_entry_state(self, trigger_selection: str):
         if 'ms' in trigger_selection:
             self.e_stop_delay_ms.set('0')
             self.ent_e_stop_delay['state'] = tk.NORMAL
+            self.ent_e_stop_delay.selection_range(0, tk.END)
+            self.ent_e_stop_delay.icursor('end')
+            self.ent_e_stop_delay.focus_set()
         else:
             self.e_stop_delay_ms.set('')
             self.ent_e_stop_delay['state'] = tk.DISABLED
+
 
     def validate_delay_entry(self, value: str):
         if value:
@@ -237,4 +267,3 @@ class Emergency_Stop_Panel():
             except ValueError:
                 return False
         return True
-
