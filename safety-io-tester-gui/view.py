@@ -24,6 +24,9 @@ class Presenter(Protocol):
     def trigger_interlock(self, trigger_selection_index: int, delay_ms: str) -> None:
         ...
 
+    def trigger_power(self, trigger_selection_index: int, delay_ms: str) -> None:
+        ...
+
     def measure_heartbeat(self) -> None:
         ...
 
@@ -64,6 +67,7 @@ class Interactive_Frame(ttk.Frame):
         Mode_Selection_Panel(self, self.presenter, grid_row=grid_row)
         Emergency_Stop_Panel(self, self.presenter, grid_row=grid_row)
         Interlock_Panel(self, self.presenter, grid_row=grid_row)
+        Power_Panel(self, self.presenter, grid_row=grid_row)
 
         ttk.Separator(self, orient="vertical").grid(
             row=0, column=1, rowspan=grid_row.get(), sticky="NS"
@@ -204,7 +208,7 @@ class Emergency_Stop_Panel(Interactive_Split_Panel):
         super().__init__(parent, presenter, grid_row)
 
     def create_left_widgets(self, frame: ttk.Frame) -> None:
-        lbl_e_stop = ttk.Label(frame, text="E-Stop:")
+        lbl_e_stop = ttk.Label(frame, text="Emergency Stop:")
         lbl_e_stop.grid(row=0, column=0, sticky="NW")
 
         # TODO: Use image (big red circle/polygon) for e-stop button
@@ -363,6 +367,96 @@ class Interlock_Panel(Interactive_Split_Panel):
         else:
             self.interlock_delay_ms.set("")
             self.ent_interlock_delay["state"] = tk.DISABLED
+
+    def validate_delay_entry(self, value: str) -> None:
+        if value:
+            try:
+                int(value)
+                return True
+            except ValueError:
+                return False
+        return True
+
+
+class Power_Panel(Interactive_Split_Panel):
+
+    """Power controls -- turn controller on or off"""
+
+    def __init__(
+        self, parent: ttk.Frame, presenter: Presenter, grid_row: tk.IntVar
+    ) -> None:
+        super().__init__(parent, presenter, grid_row)
+
+    def create_left_widgets(self, frame: ttk.Frame) -> None:
+        lbl_power = ttk.Label(frame, text="Controller Power:")
+        lbl_power.grid(row=0, column=0, sticky="NW")
+
+        # TODO: Use image (big green circle/polygon) for power button
+        btn_power = ttk.Button(
+            frame,
+            text="Power",
+            command=lambda: self.presenter.trigger_power(
+                self.dual_channel_trigger_states.index(
+                    self.power_trigger_selection.get()
+                ),
+                self.power_delay_ms.get(),
+            ),
+        )
+        btn_power.grid(row=1, column=0, sticky="W")
+
+    def create_right_widgets(self, frame: ttk.Frame) -> None:
+        # NOTE: The order of this list is important.
+        # The presenter and other functions in this class depend on this order
+        self.dual_channel_trigger_states = [
+            "A and B on simultaneously",
+            "A on after B by [Delay] ms",
+            "B on after A by [Delay] ms",
+            "A on and B off",
+            "B on and A off",
+        ]
+        self.power_trigger_selection = tk.StringVar(frame)
+
+        opt_power_dropdown = ttk.OptionMenu(
+            frame,
+            self.power_trigger_selection,
+            self.dual_channel_trigger_states[0],
+            *self.dual_channel_trigger_states,
+            command=self.toggle_delay_entry_state,
+        )
+        opt_power_dropdown.config(width=25)
+        opt_power_dropdown.grid(row=0, column=0, columnspan=3)
+
+        self.power_delay_ms = tk.StringVar(frame, "")
+
+        ttk.Label(frame, text="Delay: ").grid(row=1, column=0, sticky="E")
+
+        vcmd = (frame.register(self.validate_delay_entry), "%P")
+        self.ent_power_delay = ttk.Entry(
+            frame,
+            width=2,
+            justify="right",
+            textvariable=self.power_delay_ms,
+            state=tk.DISABLED,
+            validate="key",
+            validatecommand=vcmd,
+        )
+        self.ent_power_delay.grid(row=1, column=1, sticky="EW")
+
+        ttk.Label(frame, text="ms").grid(row=1, column=2, sticky="W")
+
+    def toggle_delay_entry_state(self, trigger_selection: str) -> None:
+        if (
+            trigger_selection == self.dual_channel_trigger_states[1]
+            or trigger_selection == self.dual_channel_trigger_states[2]
+        ):
+            self.power_delay_ms.set("0")
+            self.ent_power_delay["state"] = tk.NORMAL
+            self.ent_power_delay.selection_range(0, tk.END)
+            self.ent_power_delay.icursor("end")
+            self.ent_power_delay.focus_set()
+        else:
+            self.power_delay_ms.set("")
+            self.ent_power_delay["state"] = tk.DISABLED
 
     def validate_delay_entry(self, value: str) -> None:
         if value:

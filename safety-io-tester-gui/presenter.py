@@ -48,6 +48,19 @@ class Presenter:
             case 4:
                 print("interlock b only")
 
+    def trigger_power(self, trigger_selection_index: int, delay_ms: str) -> None:
+        match (trigger_selection_index):
+            case 0:
+                print("both power channels triggered")
+            case 1:
+                print(f"power a then b, {delay_ms} ms delay")
+            case 2:
+                print(f"power b then a, {delay_ms} ms delay")
+            case 3:
+                print("power a only")
+            case 4:
+                print("power b only")
+
     def measure_heartbeat(self) -> None:
         print("measuring heartbeat...")
 
