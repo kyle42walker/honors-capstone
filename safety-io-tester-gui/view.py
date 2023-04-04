@@ -42,37 +42,13 @@ class View(tk.Tk):
 
     def init_gui(self, presenter: Presenter) -> None:
         self.frm_interactive = Interactive_Frame(self, presenter)
-        self.frm_display = Display_Frame(self, presenter)
         # self.frm_log = Log_Frame(self, presenter)
 
         self.frm_interactive.grid(row=0, column=0)
-        self.frm_display.grid(row=0, column=1)
-        # self.frm_log.grid(row=1, column=0, columnspan=2)
+        # self.frm_log.grid(row=1, column=0)
 
         # TODO: use tk.after() function to start polling controller state
         # -- The polling function will call tk.after() at the end to repeat
-
-
-class Display_Frame(ttk.Frame):
-
-    """GUI frame containing all output pin states from the controller"""
-
-    def __init__(self, parent, presenter, **kwargs) -> None:
-        super().__init__(parent, **kwargs)
-        self.presenter = presenter
-        self.create_input_display()
-        self.create_output_display()
-
-    def create_input_display(self) -> None:
-        lbl_input = ttk.Label(self, text="Controller Inputs")
-        lbl_input.grid(row=0, column=0, sticky="EW")
-
-    def create_output_display(self) -> None:
-        pass
-
-    # TODO: get rid of inputs
-    # add outputs to the grid (need refactor) to put in-line with relevant interactive elements
-    # get rid of power delay stuff -- leave blank
 
 
 class Interactive_Frame(ttk.Frame):
@@ -103,9 +79,9 @@ class Interactive_Frame(ttk.Frame):
         )
 
 
-class Interactive_Split_Panel(ABC):
+class Triple_Split_Panel(ABC):
 
-    """ABC for left-right split interactive panels"""
+    """ABC for left-center-right split interactive panels"""
 
     def __init__(
         self, parent: ttk.Frame, presenter: Presenter, grid_row: tk.IntVar
@@ -117,9 +93,13 @@ class Interactive_Split_Panel(ABC):
 
         frm_left = ttk.Frame(parent)
         frm_left.grid(row=grid_row.get(), column=0, padx=padx, pady=pady, sticky="NESW")
+        frm_center = ttk.Frame(parent)
+        frm_center.grid(
+            row=grid_row.get(), column=2, padx=padx, pady=pady, sticky="NESW"
+        )
         frm_right = ttk.Frame(parent)
         frm_right.grid(
-            row=grid_row.get(), column=2, padx=padx, pady=pady, sticky="NESW"
+            row=grid_row.get(), column=4, padx=padx, pady=pady, sticky="NESW"
         )
         grid_row.set(grid_row.get() + 1)
 
@@ -129,6 +109,7 @@ class Interactive_Split_Panel(ABC):
         grid_row.set(grid_row.get() + 1)
 
         self.create_left_widgets(frm_left)
+        self.create_center_widgets(frm_center)
         self.create_right_widgets(frm_right)
 
     @abstractmethod
@@ -136,11 +117,15 @@ class Interactive_Split_Panel(ABC):
         pass
 
     @abstractmethod
+    def create_center_widgets(self, frame: ttk.Frame) -> None:
+        pass
+
+    @abstractmethod
     def create_right_widgets(self, frame: ttk.Frame) -> None:
         pass
 
 
-class Mode_Selection_Panel(Interactive_Split_Panel):
+class Mode_Selection_Panel(Triple_Split_Panel):
 
     """Mode selection controls"""
 
@@ -173,7 +158,7 @@ class Mode_Selection_Panel(Interactive_Split_Panel):
         self.opt_mode_dropdown.grid(row=1, column=0, sticky="W")
         self.presenter.set_mode(self.valid_modes[0])
 
-    def create_right_widgets(self, frame: ttk.Frame) -> None:
+    def create_center_widgets(self, frame: ttk.Frame) -> None:
         # Advanced bit toggling to set mode
         self.bit_toggling_enabled = tk.BooleanVar(frame)
 
@@ -209,6 +194,9 @@ class Mode_Selection_Panel(Interactive_Split_Panel):
         # Set initial button states
         self.chk_mode_bit_toggled()
 
+    def create_right_widgets(self, frame: ttk.Frame) -> None:
+        pass  # TODO
+
     def chk_mode_bit_toggled(self) -> None:
         if self.bit_toggling_enabled.get():
             self.opt_mode_dropdown["state"] = tk.DISABLED
@@ -224,7 +212,7 @@ class Mode_Selection_Panel(Interactive_Split_Panel):
             self.btn_b2_mode_bit["state"] = tk.DISABLED
 
 
-class Emergency_Stop_Panel(Interactive_Split_Panel):
+class Emergency_Stop_Panel(Triple_Split_Panel):
 
     """Emergency stop trigger controls"""
 
@@ -250,7 +238,7 @@ class Emergency_Stop_Panel(Interactive_Split_Panel):
         )
         btn_e_stop.grid(row=1, column=0, sticky="W")
 
-    def create_right_widgets(self, frame: ttk.Frame) -> None:
+    def create_center_widgets(self, frame: ttk.Frame) -> None:
         # NOTE: The order of this list is important.
         # The presenter and other functions in this class depend on this order
         self.dual_channel_trigger_states = [
@@ -290,6 +278,9 @@ class Emergency_Stop_Panel(Interactive_Split_Panel):
 
         ttk.Label(frame, text="ms").grid(row=1, column=2, sticky="W")
 
+    def create_right_widgets(self, frame: ttk.Frame) -> None:
+        pass  # TODO
+
     def toggle_delay_entry_state(self, trigger_selection: str) -> None:
         if (
             trigger_selection == self.dual_channel_trigger_states[1]
@@ -314,7 +305,7 @@ class Emergency_Stop_Panel(Interactive_Split_Panel):
         return True
 
 
-class Interlock_Panel(Interactive_Split_Panel):
+class Interlock_Panel(Triple_Split_Panel):
 
     """Interlock trigger controls"""
 
@@ -340,7 +331,7 @@ class Interlock_Panel(Interactive_Split_Panel):
         )
         btn_interlock.grid(row=1, column=0, sticky="W")
 
-    def create_right_widgets(self, frame: ttk.Frame) -> None:
+    def create_center_widgets(self, frame: ttk.Frame) -> None:
         # NOTE: The order of this list is important.
         # The presenter and other functions in this class depend on this order
         self.dual_channel_trigger_states = [
@@ -380,6 +371,9 @@ class Interlock_Panel(Interactive_Split_Panel):
 
         ttk.Label(frame, text="ms").grid(row=1, column=2, sticky="W")
 
+    def create_right_widgets(self, frame: ttk.Frame) -> None:
+        pass  # TODO
+
     def toggle_delay_entry_state(self, trigger_selection: str) -> None:
         if (
             trigger_selection == self.dual_channel_trigger_states[1]
@@ -404,7 +398,7 @@ class Interlock_Panel(Interactive_Split_Panel):
         return True
 
 
-class Power_Panel(Interactive_Split_Panel):
+class Power_Panel(Triple_Split_Panel):
 
     """Power controls -- turn controller on or off"""
 
@@ -425,11 +419,15 @@ class Power_Panel(Interactive_Split_Panel):
         )
         btn_power.grid(row=1, column=0, sticky="W")
 
-    def create_right_widgets(self, frame: ttk.Frame) -> None:
+    def create_center_widgets(self, frame: ttk.Frame) -> None:
+        # leave intentionally blank
         pass
 
+    def create_right_widgets(self, frame: ttk.Frame) -> None:
+        pass  # TODO
 
-class Heartbeat_Panel(Interactive_Split_Panel):
+
+class Heartbeat_Panel(Triple_Split_Panel):
 
     """Heartbeat monitoring controls"""
 
@@ -447,7 +445,7 @@ class Heartbeat_Panel(Interactive_Split_Panel):
         )
         self.btn_measure_hearbeat.grid(row=1, column=0, sticky="W")
 
-    def create_right_widgets(self, frame: ttk.Frame) -> None:
+    def create_center_widgets(self, frame: ttk.Frame) -> None:
         ttk.Label(frame, text="Channel A: ").grid(row=0, column=0)
         self.heart_beat_a = ttk.Label(frame, text="NA", relief="solid", borderwidth=1)
         self.heart_beat_a.grid(row=0, column=1)
@@ -457,8 +455,11 @@ class Heartbeat_Panel(Interactive_Split_Panel):
         self.heart_beat_b.grid(row=1, column=1)
         ttk.Label(frame, text="Hz").grid(row=1, column=2)
 
+    def create_right_widgets(self, frame: ttk.Frame) -> None:
+        pass  # TODO
 
-class Echo_String_Panel(Interactive_Split_Panel):
+
+class Echo_String_Panel(Triple_Split_Panel):
 
     """Controls to send string to the LCD"""
 
@@ -478,7 +479,7 @@ class Echo_String_Panel(Interactive_Split_Panel):
         )
         self.btn_echo_string.grid(row=1, column=0, sticky="W")
 
-    def create_right_widgets(self, frame: ttk.Frame) -> None:
+    def create_center_widgets(self, frame: ttk.Frame) -> None:
         self.message = tk.StringVar(frame)
         self.ent_echo_string = ttk.Entry(
             frame,
@@ -487,3 +488,6 @@ class Echo_String_Panel(Interactive_Split_Panel):
             textvariable=self.message,
         )
         self.ent_echo_string.grid(row=0, column=0, sticky="EW")
+
+    def create_right_widgets(self, frame: ttk.Frame) -> None:
+        pass  # TODO
