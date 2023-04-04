@@ -24,7 +24,7 @@ class Presenter(Protocol):
     def trigger_interlock(self, trigger_selection_index: int, delay_ms: str) -> None:
         ...
 
-    def trigger_power(self, trigger_selection_index: int, delay_ms: str) -> None:
+    def trigger_power(self) -> None:
         ...
 
     def measure_heartbeat(self) -> None:
@@ -42,15 +42,37 @@ class View(tk.Tk):
 
     def init_gui(self, presenter: Presenter) -> None:
         self.frm_interactive = Interactive_Frame(self, presenter)
-        # self.frm_display = Display_Panel(self, presenter)
-        # self.frm_log = Log_Panel(self, presenter)
+        self.frm_display = Display_Frame(self, presenter)
+        # self.frm_log = Log_Frame(self, presenter)
 
         self.frm_interactive.grid(row=0, column=0)
-        # self.frm_display.grid(row=0, column=1)
+        self.frm_display.grid(row=0, column=1)
         # self.frm_log.grid(row=1, column=0, columnspan=2)
 
         # TODO: use tk.after() function to start polling controller state
         # -- The polling function will call tk.after() at the end to repeat
+
+
+class Display_Frame(ttk.Frame):
+
+    """GUI frame containing all output pin states from the controller"""
+
+    def __init__(self, parent, presenter, **kwargs) -> None:
+        super().__init__(parent, **kwargs)
+        self.presenter = presenter
+        self.create_input_display()
+        self.create_output_display()
+
+    def create_input_display(self) -> None:
+        lbl_input = ttk.Label(self, text="Controller Inputs")
+        lbl_input.grid(row=0, column=0, sticky="EW")
+
+    def create_output_display(self) -> None:
+        pass
+
+    # TODO: get rid of inputs
+    # add outputs to the grid (need refactor) to put in-line with relevant interactive elements
+    # get rid of power delay stuff -- leave blank
 
 
 class Interactive_Frame(ttk.Frame):
@@ -75,6 +97,10 @@ class Interactive_Frame(ttk.Frame):
 
         Heartbeat_Panel(self, self.presenter, grid_row=grid_row)
         Echo_String_Panel(self, self.presenter, grid_row=grid_row)
+
+        ttk.Separator(self, orient="vertical").grid(
+            row=0, column=3, rowspan=grid_row.get(), sticky="NS"
+        )
 
 
 class Interactive_Split_Panel(ABC):
@@ -395,77 +421,12 @@ class Power_Panel(Interactive_Split_Panel):
         btn_power = ttk.Button(
             frame,
             text="Power",
-            command=lambda: self.presenter.trigger_power(
-                self.dual_channel_trigger_states.index(
-                    self.power_trigger_selection.get()
-                ),
-                self.power_delay_ms.get(),
-            ),
+            command=self.presenter.trigger_power,
         )
         btn_power.grid(row=1, column=0, sticky="W")
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
-        # NOTE: The order of this list is important.
-        # The presenter and other functions in this class depend on this order
-        self.dual_channel_trigger_states = [
-            "A and B on simultaneously",
-            "A on after B by [Delay] ms",
-            "B on after A by [Delay] ms",
-            "A on and B off",
-            "B on and A off",
-        ]
-        self.power_trigger_selection = tk.StringVar(frame)
-
-        opt_power_dropdown = ttk.OptionMenu(
-            frame,
-            self.power_trigger_selection,
-            self.dual_channel_trigger_states[0],
-            *self.dual_channel_trigger_states,
-            command=self.toggle_delay_entry_state,
-        )
-        opt_power_dropdown.config(width=25)
-        opt_power_dropdown.grid(row=0, column=0, columnspan=3)
-
-        self.power_delay_ms = tk.StringVar(frame, "")
-
-        ttk.Label(frame, text="Delay: ").grid(row=1, column=0, sticky="E")
-
-        vcmd = (frame.register(self.validate_delay_entry), "%P")
-        self.ent_power_delay = ttk.Entry(
-            frame,
-            width=2,
-            justify="right",
-            textvariable=self.power_delay_ms,
-            state=tk.DISABLED,
-            validate="key",
-            validatecommand=vcmd,
-        )
-        self.ent_power_delay.grid(row=1, column=1, sticky="EW")
-
-        ttk.Label(frame, text="ms").grid(row=1, column=2, sticky="W")
-
-    def toggle_delay_entry_state(self, trigger_selection: str) -> None:
-        if (
-            trigger_selection == self.dual_channel_trigger_states[1]
-            or trigger_selection == self.dual_channel_trigger_states[2]
-        ):
-            self.power_delay_ms.set("0")
-            self.ent_power_delay["state"] = tk.NORMAL
-            self.ent_power_delay.selection_range(0, tk.END)
-            self.ent_power_delay.icursor("end")
-            self.ent_power_delay.focus_set()
-        else:
-            self.power_delay_ms.set("")
-            self.ent_power_delay["state"] = tk.DISABLED
-
-    def validate_delay_entry(self, value: str) -> None:
-        if value:
-            try:
-                int(value)
-                return True
-            except ValueError:
-                return False
-        return True
+        pass
 
 
 class Heartbeat_Panel(Interactive_Split_Panel):
