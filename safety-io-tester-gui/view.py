@@ -67,9 +67,9 @@ class Interactive_Frame(ttk.Frame):
         Interlock_Panel(self, self.presenter, grid_row=grid_row)
         Power_Panel(self, self.presenter, grid_row=grid_row)
 
-        ttk.Separator(self, orient="vertical").grid(
-            row=0, column=1, rowspan=grid_row.get(), sticky="NS"
-        )
+        # ttk.Separator(self, orient="vertical").grid(
+        #     row=0, column=1, rowspan=grid_row.get(), sticky="NS"
+        # )
 
         Heartbeat_Panel(self, self.presenter, grid_row=grid_row)
         Echo_String_Panel(self, self.presenter, grid_row=grid_row)
@@ -94,17 +94,13 @@ class Triple_Split_Panel(ABC):
         frm_left = ttk.Frame(parent)
         frm_left.grid(row=grid_row.get(), column=0, padx=padx, pady=pady, sticky="NESW")
         frm_center = ttk.Frame(parent)
-        frm_center.grid(
-            row=grid_row.get(), column=2, padx=padx, pady=pady, sticky="NESW"
-        )
+        frm_center.grid(row=grid_row.get(), column=2, padx=padx, pady=pady, sticky="")
         frm_right = ttk.Frame(parent)
-        frm_right.grid(
-            row=grid_row.get(), column=4, padx=padx, pady=pady, sticky="NESW"
-        )
+        frm_right.grid(row=grid_row.get(), column=4, padx=padx, pady=pady, sticky="")
         grid_row.set(grid_row.get() + 1)
 
         ttk.Separator(parent, orient="horizontal").grid(
-            row=grid_row.get(), column=0, columnspan=3, sticky="EW"
+            row=grid_row.get(), column=0, columnspan=5, sticky="EW"
         )
         grid_row.set(grid_row.get() + 1)
 
@@ -123,6 +119,20 @@ class Triple_Split_Panel(ABC):
     @abstractmethod
     def create_right_widgets(self, frame: ttk.Frame) -> None:
         pass
+
+    def add_output_pin_pair(
+        self, frame: ttk.Frame, lbl_left: str, lbl_right: str, grid_row: int
+    ) -> tuple[ttk.Radiobutton, ttk.Radiobutton]:
+        lbl_left = ttk.Label(frame, text=lbl_left)
+        lbl_left.grid(row=grid_row, column=0, sticky="NSE")
+        indicator_left = ttk.Radiobutton(frame, state=tk.DISABLED)
+        indicator_left.grid(row=grid_row, column=1)
+        indicator_right = ttk.Radiobutton(frame, state=tk.DISABLED)
+        indicator_right.grid(row=grid_row, column=2)
+        lbl_right = ttk.Label(frame, text=lbl_right)
+        lbl_right.grid(row=grid_row, column=3, sticky="NSW")
+
+        return indicator_left, indicator_right
 
 
 class Mode_Selection_Panel(Triple_Split_Panel):
@@ -195,7 +205,12 @@ class Mode_Selection_Panel(Triple_Split_Panel):
         self.chk_mode_bit_toggled()
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
-        pass  # TODO
+        self.ind_a1, self.ind_b1 = self.add_output_pin_pair(
+            frame, "Mode A1", "Mode B1", 0
+        )
+        self.ind_a2, self.ind_b2 = self.add_output_pin_pair(
+            frame, "Mode A2", "Mode B2", 1
+        )
 
     def chk_mode_bit_toggled(self) -> None:
         if self.bit_toggling_enabled.get():
@@ -279,7 +294,12 @@ class Emergency_Stop_Panel(Triple_Split_Panel):
         ttk.Label(frame, text="ms").grid(row=1, column=2, sticky="W")
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
-        pass  # TODO
+        self.ind_e_stop_a, self.ind_e_stop_b = self.add_output_pin_pair(
+            frame, "E-Stop A", "E-Stop B", 0
+        )
+        self.ind_stop_a, self.ind_stop_b = self.add_output_pin_pair(
+            frame, "Stop A", "Stop B", 1
+        )
 
     def toggle_delay_entry_state(self, trigger_selection: str) -> None:
         if (
@@ -372,7 +392,9 @@ class Interlock_Panel(Triple_Split_Panel):
         ttk.Label(frame, text="ms").grid(row=1, column=2, sticky="W")
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
-        pass  # TODO
+        self.ind_int_a, self.ind_int_b = self.add_output_pin_pair(
+            frame, "Interlock A", "Interlock B", 0
+        )
 
     def toggle_delay_entry_state(self, trigger_selection: str) -> None:
         if (
@@ -424,7 +446,9 @@ class Power_Panel(Triple_Split_Panel):
         pass
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
-        pass  # TODO
+        self.ind_pwr_a, self.ind_pwr_b = self.add_output_pin_pair(
+            frame, "Power A", "Power B", 0
+        )
 
 
 class Heartbeat_Panel(Triple_Split_Panel):
@@ -456,7 +480,9 @@ class Heartbeat_Panel(Triple_Split_Panel):
         ttk.Label(frame, text="Hz").grid(row=1, column=2)
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
-        pass  # TODO
+        self.ind_heart_a, self.ind_heart_b = self.add_output_pin_pair(
+            frame, "Heartbeat A", "Heartbeat B", 0
+        )
 
 
 class Echo_String_Panel(Triple_Split_Panel):
@@ -490,4 +516,6 @@ class Echo_String_Panel(Triple_Split_Panel):
         self.ent_echo_string.grid(row=0, column=0, sticky="EW")
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
-        pass  # TODO
+        self.ind_teach_a, self.ind_teach_b = self.add_output_pin_pair(
+            frame, "Teach Mode A", "Teach Mode B", 0
+        )
