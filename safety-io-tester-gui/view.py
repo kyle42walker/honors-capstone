@@ -12,9 +12,6 @@ BUTTON_SIZE = (15, 1)
 
 
 class Presenter(Protocol):
-    def get_output_pin_states(self) -> dict[str, tuple[bool]]:
-        ...
-
     def set_mode(self, mode: str) -> None:
         ...
 
@@ -50,19 +47,20 @@ class View(tk.Tk):
 
     def init_gui(self, presenter: Presenter) -> None:
         self.frm_interactive = Interactive_Frame(self, presenter)
-        # self.frm_log = Log_Frame(self, presenter)
+        self.frm_logging = Logging_Frame(self, presenter)
 
         self.frm_interactive.grid(row=0, column=0)
-        # self.frm_log.grid(row=1, column=0)
+        self.frm_logging.grid(row=1, column=0)
 
-        self.frm_interactive.update_output_pins()
+    def set_output_pin_indicators(self, pin_states: dict[str, tuple[bool]]) -> None:
+        self.frm_interactive.set_output_indicators(pin_states)
 
 
 class Interactive_Frame(ttk.Frame):
 
     """GUI frame containing all user-interactive widgets"""
 
-    def __init__(self, parent, presenter, **kwargs) -> None:
+    def __init__(self, parent: View, presenter: Presenter, **kwargs) -> None:
         super().__init__(parent, **kwargs)
         self.presenter = presenter
         self.create_panels()
@@ -85,19 +83,15 @@ class Interactive_Frame(ttk.Frame):
             row=0, column=3, rowspan=grid_row.get(), sticky="NS"
         )
 
-    def update_output_pins(self) -> None:
-        pin_states = self.presenter.get_output_pin_states()
-
-        self.pnl_mode.set_output_indicators(*pin_states["mode1"], 0)
-        self.pnl_mode.set_output_indicators(*pin_states["mode2"], 1)
-        self.pnl_estop.set_output_indicators(*pin_states["estop"], 0)
-        self.pnl_estop.set_output_indicators(*pin_states["stop"], 1)
+    def set_output_indicators(self, pin_states: dict[str, tuple[bool]]) -> None:
+        self.pnl_mode.set_output_indicators(*pin_states["mode1"], grid_row=0)
+        self.pnl_mode.set_output_indicators(*pin_states["mode2"], grid_row=1)
+        self.pnl_estop.set_output_indicators(*pin_states["estop"], grid_row=0)
+        self.pnl_estop.set_output_indicators(*pin_states["stop"], grid_row=1)
         self.pnl_interlock.set_output_indicators(*pin_states["interlock"])
         self.pnl_power.set_output_indicators(*pin_states["power"])
         self.pnl_heartbeat.set_output_indicators(*pin_states["heartbeat"])
         self.pnl_echo_str.set_output_indicators(*pin_states["teach"])
-
-        self.after(100, self.update_output_pins)
 
 
 class Interactive_Panel(ABC):
@@ -517,7 +511,7 @@ class Power_Panel(Interactive_Panel):
         btn_power = tk.Button(
             frame,
             text="Power",
-            background="green",
+            background="green3",
             relief="groove",
             width=BUTTON_SIZE[0],
             height=BUTTON_SIZE[1],
@@ -611,3 +605,12 @@ class Echo_String_Panel(Interactive_Panel):
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
         self.add_output_pin_pair(frame, "Teach Mode A", "Teach Mode B")
+
+
+class Logging_Frame(ttk.Frame):
+
+    """GUI frame containing logged messages to and from the controller"""
+
+    def __init__(self, parent: View, presenter: Presenter, **kwargs) -> None:
+        super().__init__(parent, **kwargs)
+        self.presenter = presenter

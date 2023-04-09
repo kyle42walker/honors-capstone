@@ -3,8 +3,19 @@ from typing import Protocol
 from model import Model
 
 
+POLLING_RATE = 100  # [ms] polling rate for output pin states
+
+
+class Model(Protocol):
+    def get_output_pin_states(self) -> dict[str, tuple[bool]]:
+        ...
+
+
 class View(Protocol):
     def init_gui(self, presenter: Presenter) -> None:
+        ...
+
+    def set_output_pin_indicators(self, pin_states: dict[str, tuple[bool]]) -> None:
         ...
 
     def mainloop(self) -> None:
@@ -15,18 +26,6 @@ class Presenter:
     def __init__(self, model: Model, view: View) -> None:
         self.model = model
         self.view = view
-
-    def get_output_pin_states(self) -> dict[str, tuple[bool]]:
-        return {
-            "mode1": (True, False),
-            "mode2": (False, True),
-            "estop": (True, False),
-            "stop": (False, True),
-            "interlock": (True, False),
-            "power": (True, False),
-            "heartbeat": (True, False),
-            "teach": (True, False),
-        }
 
     def set_mode(self, mode: str) -> None:
         print(mode)
@@ -71,4 +70,10 @@ class Presenter:
 
     def run(self) -> None:
         self.view.init_gui(self)
+        self.view.after(POLLING_RATE, self.update_output_pin_indicators)
         self.view.mainloop()
+
+    def update_output_pin_indicators(self) -> None:
+        # update indicators in GUI by polling output pin states every POLLING_RATE ms
+        self.view.set_output_pin_indicators(self.model.get_output_pin_states())
+        self.view.after(POLLING_RATE, self.update_output_pin_indicators)
