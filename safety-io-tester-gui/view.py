@@ -8,6 +8,7 @@ from PIL import ImageTk, Image
 TITLE = "Safety I/O Tester"
 IMAGE_PATH = "Resource/Images/"
 FONT_SIZE = 12
+BUTTON_IMAGE_SIZE = 50
 
 
 class Presenter(Protocol):
@@ -277,7 +278,11 @@ class Emergency_Stop_Panel(Interactive_Panel):
         lbl_e_stop = ttk.Label(frame, text="Emergency Stop:")
         lbl_e_stop.grid(row=0, column=0, sticky="NW")
 
-        self.img = ImageTk.PhotoImage(Image.open(IMAGE_PATH + "estop_btn.png"))
+        self.img = ImageTk.PhotoImage(
+            Image.open(IMAGE_PATH + "estop_btn.png").resize(
+                (BUTTON_IMAGE_SIZE, BUTTON_IMAGE_SIZE)
+            )
+        )
         btn_e_stop = ttk.Button(
             frame,
             text="E-Stop",
@@ -375,7 +380,11 @@ class Interlock_Panel(Interactive_Panel):
         lbl_interlock = ttk.Label(frame, text="Interlock:")
         lbl_interlock.grid(row=0, column=0, sticky="NW")
 
-        self.img = ImageTk.PhotoImage(Image.open(IMAGE_PATH + "interlock_btn.png"))
+        self.img = ImageTk.PhotoImage(
+            Image.open(IMAGE_PATH + "interlock_btn.png").resize(
+                (BUTTON_IMAGE_SIZE, BUTTON_IMAGE_SIZE)
+            )
+        )
         btn_interlock = ttk.Button(
             frame,
             text="Interlock",
@@ -472,7 +481,11 @@ class Power_Panel(Interactive_Panel):
         lbl_power = ttk.Label(frame, text="Controller Power:")
         lbl_power.grid(row=0, column=0, sticky="NW")
 
-        self.img = ImageTk.PhotoImage(Image.open(IMAGE_PATH + "power_btn.png"))
+        self.img = ImageTk.PhotoImage(
+            Image.open(IMAGE_PATH + "power_btn.png").resize(
+                (BUTTON_IMAGE_SIZE, BUTTON_IMAGE_SIZE)
+            )
+        )
         btn_power = ttk.Button(
             frame,
             text="Power",
