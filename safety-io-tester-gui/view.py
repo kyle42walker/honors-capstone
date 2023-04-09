@@ -7,7 +7,7 @@ from PIL import ImageTk, Image
 
 TITLE = "Safety I/O Tester"
 IMAGE_PATH = "Resource/Images/"
-FONT_SIZE = 10
+FONT_SIZE = 12
 
 
 class Presenter(Protocol):
@@ -99,7 +99,7 @@ class Interactive_Frame(ttk.Frame):
         self.after(100, self.update_output_pins)
 
 
-class Triple_Split_Panel(ABC):
+class Interactive_Panel(ABC):
 
     """ABC for left-center-right split interactive panels"""
 
@@ -175,7 +175,7 @@ class Triple_Split_Panel(ABC):
         )
 
 
-class Mode_Selection_Panel(Triple_Split_Panel):
+class Mode_Selection_Panel(Interactive_Panel):
 
     """Mode selection controls"""
 
@@ -264,7 +264,7 @@ class Mode_Selection_Panel(Triple_Split_Panel):
             self.btn_b2_mode_bit["state"] = tk.DISABLED
 
 
-class Emergency_Stop_Panel(Triple_Split_Panel):
+class Emergency_Stop_Panel(Interactive_Panel):
 
     """Emergency stop trigger controls"""
 
@@ -277,10 +277,12 @@ class Emergency_Stop_Panel(Triple_Split_Panel):
         lbl_e_stop = ttk.Label(frame, text="Emergency Stop:")
         lbl_e_stop.grid(row=0, column=0, sticky="NW")
 
-        # TODO: Use image (big red circle/polygon) for e-stop button
+        self.img = ImageTk.PhotoImage(Image.open(IMAGE_PATH + "estop_btn.png"))
         btn_e_stop = ttk.Button(
             frame,
             text="E-Stop",
+            image=self.img,
+            compound="center",
             command=lambda: self.presenter.trigger_e_stop(
                 self.dual_channel_trigger_states.index(
                     self.e_stop_trigger_selection.get()
@@ -360,7 +362,7 @@ class Emergency_Stop_Panel(Triple_Split_Panel):
         return True
 
 
-class Interlock_Panel(Triple_Split_Panel):
+class Interlock_Panel(Interactive_Panel):
 
     """Interlock trigger controls"""
 
@@ -373,10 +375,12 @@ class Interlock_Panel(Triple_Split_Panel):
         lbl_interlock = ttk.Label(frame, text="Interlock:")
         lbl_interlock.grid(row=0, column=0, sticky="NW")
 
-        # TODO: Use image (big yellow circle/polygon) for interlock button
+        self.img = ImageTk.PhotoImage(Image.open(IMAGE_PATH + "interlock_btn.png"))
         btn_interlock = ttk.Button(
             frame,
             text="Interlock",
+            image=self.img,
+            compound="center",
             command=lambda: self.presenter.trigger_interlock(
                 self.dual_channel_trigger_states.index(
                     self.interlock_trigger_selection.get()
@@ -455,7 +459,7 @@ class Interlock_Panel(Triple_Split_Panel):
         return True
 
 
-class Power_Panel(Triple_Split_Panel):
+class Power_Panel(Interactive_Panel):
 
     """Power controls -- turn controller on or off"""
 
@@ -468,10 +472,12 @@ class Power_Panel(Triple_Split_Panel):
         lbl_power = ttk.Label(frame, text="Controller Power:")
         lbl_power.grid(row=0, column=0, sticky="NW")
 
-        # TODO: Use image (big green circle/polygon) for power button
+        self.img = ImageTk.PhotoImage(Image.open(IMAGE_PATH + "power_btn.png"))
         btn_power = ttk.Button(
             frame,
             text="Power",
+            image=self.img,
+            compound="center",
             command=self.presenter.trigger_power,
         )
         btn_power.grid(row=1, column=0, sticky="W")
@@ -484,7 +490,7 @@ class Power_Panel(Triple_Split_Panel):
         self.add_output_pin_pair(frame, "Power A", "Power B")
 
 
-class Heartbeat_Panel(Triple_Split_Panel):
+class Heartbeat_Panel(Interactive_Panel):
 
     """Heartbeat monitoring controls"""
 
@@ -516,7 +522,7 @@ class Heartbeat_Panel(Triple_Split_Panel):
         self.add_output_pin_pair(frame, "Heartbeat A", "Heartbeat B")
 
 
-class Echo_String_Panel(Triple_Split_Panel):
+class Echo_String_Panel(Interactive_Panel):
 
     """Controls to send string to the LCD"""
 
