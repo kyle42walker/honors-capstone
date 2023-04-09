@@ -8,7 +8,7 @@ from PIL import ImageTk, Image
 TITLE = "Safety I/O Tester"
 IMAGE_PATH = "Resource/Images/"
 FONT_SIZE = 12
-BUTTON_IMAGE_SIZE = 50
+BUTTON_SIZE = (15, 1)
 
 
 class Presenter(Protocol):
@@ -198,15 +198,23 @@ class Mode_Selection_Panel(Interactive_Panel):
         ]
         self.mode_selection = tk.StringVar(frame)
 
+        style = ttk.Style()
+        style.configure(
+            "BoldCentered.TMenubutton",
+            font=("TkDefaultFont", FONT_SIZE, "bold"),
+            anchor="center",
+            width=BUTTON_SIZE[0] - 1,
+        )
+
         self.opt_mode_dropdown = ttk.OptionMenu(
             frame,
             self.mode_selection,
             self.valid_modes[0],
             *self.valid_modes,
+            style="BoldCentered.TMenubutton",
             command=self.presenter.set_mode,
         )
         self.opt_mode_dropdown["menu"].configure(font=("TKDefault", FONT_SIZE))
-        self.opt_mode_dropdown.config(width=10)
         self.opt_mode_dropdown.grid(row=1, column=0, sticky="W")
         self.presenter.set_mode(self.valid_modes[0])
 
@@ -223,23 +231,52 @@ class Mode_Selection_Panel(Interactive_Panel):
         chk_mode_bit_toggle.grid(row=0, column=0, columnspan=2)
 
         # Buttons to toggle mode bits (A1, A2, B1, B2)
-        self.btn_a1_mode_bit = ttk.Button(
-            frame, text="A1", command=lambda: self.presenter.toggle_mode_bit("A1")
+        btn_size = (10, 1)
+        self.btn_a1_mode_bit = tk.Button(
+            frame,
+            text="A1",
+            background="light grey",
+            relief="groove",
+            width=btn_size[0],
+            height=btn_size[1],
+            font=("TKDefault", FONT_SIZE),
+            command=lambda: self.presenter.toggle_mode_bit("A1"),
         )
         self.btn_a1_mode_bit.grid(row=1, column=0)
 
-        self.btn_a2_mode_bit = ttk.Button(
-            frame, text="A2", command=lambda: self.presenter.toggle_mode_bit("A2")
+        self.btn_a2_mode_bit = tk.Button(
+            frame,
+            text="A2",
+            background="light grey",
+            relief="groove",
+            width=btn_size[0],
+            height=btn_size[1],
+            font=("TKDefault", FONT_SIZE),
+            command=lambda: self.presenter.toggle_mode_bit("A2"),
         )
         self.btn_a2_mode_bit.grid(row=2, column=0)
 
-        self.btn_b1_mode_bit = ttk.Button(
-            frame, text="B1", command=lambda: self.presenter.toggle_mode_bit("B1")
+        self.btn_b1_mode_bit = tk.Button(
+            frame,
+            text="B1",
+            background="light grey",
+            relief="groove",
+            width=btn_size[0],
+            height=btn_size[1],
+            font=("TKDefault", FONT_SIZE),
+            command=lambda: self.presenter.toggle_mode_bit("B1"),
         )
         self.btn_b1_mode_bit.grid(row=1, column=1)
 
-        self.btn_b2_mode_bit = ttk.Button(
-            frame, text="B2", command=lambda: self.presenter.toggle_mode_bit("B2")
+        self.btn_b2_mode_bit = tk.Button(
+            frame,
+            text="B2",
+            background="light grey",
+            relief="groove",
+            width=btn_size[0],
+            height=btn_size[1],
+            font=("TKDefault", FONT_SIZE),
+            command=lambda: self.presenter.toggle_mode_bit("B2"),
         )
         self.btn_b2_mode_bit.grid(row=2, column=1)
 
@@ -278,16 +315,14 @@ class Emergency_Stop_Panel(Interactive_Panel):
         lbl_e_stop = ttk.Label(frame, text="Emergency Stop:")
         lbl_e_stop.grid(row=0, column=0, sticky="NW")
 
-        self.img = ImageTk.PhotoImage(
-            Image.open(IMAGE_PATH + "estop_btn.png").resize(
-                (BUTTON_IMAGE_SIZE, BUTTON_IMAGE_SIZE)
-            )
-        )
-        btn_e_stop = ttk.Button(
+        btn_e_stop = tk.Button(
             frame,
             text="E-Stop",
-            image=self.img,
-            compound="center",
+            background="red",
+            relief="groove",
+            width=BUTTON_SIZE[0],
+            height=BUTTON_SIZE[1],
+            font=("TKDefault", FONT_SIZE, "bold"),
             command=lambda: self.presenter.trigger_e_stop(
                 self.dual_channel_trigger_states.index(
                     self.e_stop_trigger_selection.get()
@@ -380,16 +415,14 @@ class Interlock_Panel(Interactive_Panel):
         lbl_interlock = ttk.Label(frame, text="Interlock:")
         lbl_interlock.grid(row=0, column=0, sticky="NW")
 
-        self.img = ImageTk.PhotoImage(
-            Image.open(IMAGE_PATH + "interlock_btn.png").resize(
-                (BUTTON_IMAGE_SIZE, BUTTON_IMAGE_SIZE)
-            )
-        )
-        btn_interlock = ttk.Button(
+        btn_interlock = tk.Button(
             frame,
             text="Interlock",
-            image=self.img,
-            compound="center",
+            background="yellow",
+            relief="groove",
+            width=BUTTON_SIZE[0],
+            height=BUTTON_SIZE[1],
+            font=("TKDefault", FONT_SIZE, "bold"),
             command=lambda: self.presenter.trigger_interlock(
                 self.dual_channel_trigger_states.index(
                     self.interlock_trigger_selection.get()
@@ -481,16 +514,14 @@ class Power_Panel(Interactive_Panel):
         lbl_power = ttk.Label(frame, text="Controller Power:")
         lbl_power.grid(row=0, column=0, sticky="NW")
 
-        self.img = ImageTk.PhotoImage(
-            Image.open(IMAGE_PATH + "power_btn.png").resize(
-                (BUTTON_IMAGE_SIZE, BUTTON_IMAGE_SIZE)
-            )
-        )
-        btn_power = ttk.Button(
+        btn_power = tk.Button(
             frame,
             text="Power",
-            image=self.img,
-            compound="center",
+            background="green",
+            relief="groove",
+            width=BUTTON_SIZE[0],
+            height=BUTTON_SIZE[1],
+            font=("TKDefault", FONT_SIZE, "bold"),
             command=self.presenter.trigger_power,
         )
         btn_power.grid(row=1, column=0, sticky="W")
@@ -516,8 +547,15 @@ class Heartbeat_Panel(Interactive_Panel):
         lbl_heartbeat = ttk.Label(frame, text="Hearbeat:")
         lbl_heartbeat.grid(row=0, column=0, sticky="NW")
 
-        self.btn_measure_hearbeat = ttk.Button(
-            frame, text="Measure Hearbeat", command=self.presenter.measure_heartbeat
+        self.btn_measure_hearbeat = tk.Button(
+            frame,
+            text="Measure Hearbeat",
+            background="light grey",
+            relief="groove",
+            width=BUTTON_SIZE[0],
+            height=BUTTON_SIZE[1],
+            font=("TKDefault", FONT_SIZE, "bold"),
+            command=self.presenter.measure_heartbeat,
         )
         self.btn_measure_hearbeat.grid(row=1, column=0, sticky="W")
 
@@ -548,9 +586,14 @@ class Echo_String_Panel(Interactive_Panel):
         lbl_echo_string = ttk.Label(frame, text="Echo String:")
         lbl_echo_string.grid(row=0, column=0, sticky="NW")
 
-        self.btn_echo_string = ttk.Button(
+        self.btn_echo_string = tk.Button(
             frame,
             text="Send to LCD",
+            background="light grey",
+            relief="groove",
+            width=BUTTON_SIZE[0],
+            height=BUTTON_SIZE[1],
+            font=("TKDefault", FONT_SIZE, "bold"),
             command=lambda: self.presenter.echo_string(self.message.get()),
         )
         self.btn_echo_string.grid(row=1, column=0, sticky="W")
