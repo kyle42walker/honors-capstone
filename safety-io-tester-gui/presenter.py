@@ -17,7 +17,16 @@ class Presenter:
         self.view = view
 
     def get_output_pin_states(self) -> dict[str, tuple[bool]]:
-        return {"teach mode": (True, False)}
+        return {
+            "mode1": (True, False),
+            "mode2": (False, True),
+            "estop": (True, False),
+            "stop": (False, True),
+            "interlock": (True, False),
+            "power": (True, False),
+            "heartbeat": (True, False),
+            "teach": (True, False),
+        }
 
     def set_mode(self, mode: str) -> None:
         print(mode)

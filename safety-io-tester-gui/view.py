@@ -7,7 +7,7 @@ from PIL import ImageTk, Image
 
 TITLE = "Safety I/O Tester"
 IMAGE_PATH = "Resource/Images/"
-FONT_SIZE = 11
+FONT_SIZE = 10
 
 
 class Presenter(Protocol):
@@ -46,7 +46,6 @@ class View(tk.Tk):
         # Set font size
         style = ttk.Style(self)
         style.configure(".", font=("TkDefaultFont", FONT_SIZE))
-        # style.configure("TEntry", font=style.lookup("TEntry", "font"))
 
     def init_gui(self, presenter: Presenter) -> None:
         self.frm_interactive = Interactive_Frame(self, presenter)
@@ -55,9 +54,7 @@ class View(tk.Tk):
         self.frm_interactive.grid(row=0, column=0)
         # self.frm_log.grid(row=1, column=0)
 
-        # self.frm_interactive.update_output_pins()
-
-        self.after(1500, self.frm_interactive.update_output_pins)
+        self.frm_interactive.update_output_pins()
 
 
 class Interactive_Frame(ttk.Frame):
@@ -89,10 +86,17 @@ class Interactive_Frame(ttk.Frame):
 
     def update_output_pins(self) -> None:
         pin_states = self.presenter.get_output_pin_states()
-        print(*pin_states["teach mode"])
-        self.pnl_echo_str.set_output_indicators(*pin_states["teach mode"])
 
-        # self.after(100, self.update_output_pins())
+        self.pnl_mode.set_output_indicators(*pin_states["mode1"], 0)
+        self.pnl_mode.set_output_indicators(*pin_states["mode2"], 1)
+        self.pnl_estop.set_output_indicators(*pin_states["estop"], 0)
+        self.pnl_estop.set_output_indicators(*pin_states["stop"], 1)
+        self.pnl_interlock.set_output_indicators(*pin_states["interlock"])
+        self.pnl_power.set_output_indicators(*pin_states["power"])
+        self.pnl_heartbeat.set_output_indicators(*pin_states["heartbeat"])
+        self.pnl_echo_str.set_output_indicators(*pin_states["teach"])
+
+        self.after(100, self.update_output_pins)
 
 
 class Triple_Split_Panel(ABC):
@@ -127,6 +131,7 @@ class Triple_Split_Panel(ABC):
             Image.open(IMAGE_PATH + "indicator_on.png")
         )
 
+        self.output_pin_indicators = {}
         self.create_left_widgets(frm_left)
         self.create_center_widgets(frm_center)
         self.create_right_widgets(frm_right)
@@ -144,22 +149,28 @@ class Triple_Split_Panel(ABC):
         pass
 
     def add_output_pin_pair(
-        self, frame: ttk.Frame, lbl_left: str, lbl_right: str, grid_row: int
+        self, frame: ttk.Frame, lbl_left: str, lbl_right: str, grid_row: int = 0
     ) -> None:
         lbl_left = ttk.Label(frame, text=lbl_left)
         lbl_left.grid(row=grid_row, column=0, sticky="NSE")
-        self.ind_left = ttk.Label(frame, image=self.ind_off_img)
-        self.ind_left.grid(row=grid_row, column=1, sticky="")
-        self.ind_right = ttk.Label(frame, image=self.ind_off_img)
-        self.ind_right.grid(row=grid_row, column=2, sticky="")
+        ind_left = ttk.Label(frame, image=self.ind_off_img)
+        ind_left.grid(row=grid_row, column=1, sticky="")
+        ind_right = ttk.Label(frame, image=self.ind_off_img)
+        ind_right.grid(row=grid_row, column=2, sticky="")
         lbl_right = ttk.Label(frame, text=lbl_right)
         lbl_right.grid(row=grid_row, column=3, sticky="NSW")
 
-    def set_output_indicators(self, left_state: bool, right_state: bool) -> None:
-        self.ind_left.configure(
+        self.output_pin_indicators[grid_row] = (ind_left, ind_right)
+
+    def set_output_indicators(
+        self, left_state: bool, right_state: bool, grid_row: int = 0
+    ) -> None:
+        # Set left ouput pin indicator
+        self.output_pin_indicators[grid_row][0].configure(
             image=(self.ind_on_img if left_state else self.ind_off_img)
         )
-        self.ind_right.configure(
+        # Set right ouput pin indicator
+        self.output_pin_indicators[grid_row][1].configure(
             image=(self.ind_on_img if right_state else self.ind_off_img)
         )
 
@@ -418,7 +429,7 @@ class Interlock_Panel(Triple_Split_Panel):
         ttk.Label(frame, text="ms").grid(row=1, column=2, sticky="W")
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
-        self.add_output_pin_pair(frame, "Interlock A", "Interlock B", 0)
+        self.add_output_pin_pair(frame, "Interlock A", "Interlock B")
 
     def toggle_delay_entry_state(self, trigger_selection: str) -> None:
         if (
@@ -470,7 +481,7 @@ class Power_Panel(Triple_Split_Panel):
         pass
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
-        self.add_output_pin_pair(frame, "Power A", "Power B", 0)
+        self.add_output_pin_pair(frame, "Power A", "Power B")
 
 
 class Heartbeat_Panel(Triple_Split_Panel):
@@ -502,7 +513,7 @@ class Heartbeat_Panel(Triple_Split_Panel):
         ttk.Label(frame, text="Hz").grid(row=1, column=2)
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
-        self.add_output_pin_pair(frame, "Heartbeat A", "Heartbeat B", 0)
+        self.add_output_pin_pair(frame, "Heartbeat A", "Heartbeat B")
 
 
 class Echo_String_Panel(Triple_Split_Panel):
@@ -537,4 +548,4 @@ class Echo_String_Panel(Triple_Split_Panel):
         self.ent_echo_string.grid(row=0, column=0, sticky="EW")
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
-        self.add_output_pin_pair(frame, "Teach Mode A", "Teach Mode B", 0)
+        self.add_output_pin_pair(frame, "Teach Mode A", "Teach Mode B")
