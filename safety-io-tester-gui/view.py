@@ -2,15 +2,17 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Protocol
 from abc import ABC, abstractmethod
+from PIL import ImageTk, Image
 
 
 TITLE = "Safety I/O Tester"
-BROOKS_LOGO_PATH = "Resource/Images/brooks_logo.png"
+IMAGE_PATH = "Resource/Images/"
+FONT_SIZE = 11
 
 
 class Presenter(Protocol):
-    # def get_output_pin_states(self) -> None:
-    #     ...
+    def get_output_pin_states(self) -> dict[str, tuple[bool]]:
+        ...
 
     def set_mode(self, mode: str) -> None:
         ...
@@ -38,7 +40,13 @@ class View(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title(TITLE)
-        self.iconphoto(False, tk.PhotoImage(file=BROOKS_LOGO_PATH))
+        self.iconphoto(False, tk.PhotoImage(file=IMAGE_PATH + "brooks_logo.png"))
+        self.resizable(False, False)
+
+        # Set font size
+        style = ttk.Style(self)
+        style.configure(".", font=("TkDefaultFont", FONT_SIZE))
+        # style.configure("TEntry", font=style.lookup("TEntry", "font"))
 
     def init_gui(self, presenter: Presenter) -> None:
         self.frm_interactive = Interactive_Frame(self, presenter)
@@ -47,8 +55,9 @@ class View(tk.Tk):
         self.frm_interactive.grid(row=0, column=0)
         # self.frm_log.grid(row=1, column=0)
 
-        # TODO: use tk.after() function to start polling controller state
-        # -- The polling function will call tk.after() at the end to repeat
+        # self.frm_interactive.update_output_pins()
+
+        self.after(1500, self.frm_interactive.update_output_pins)
 
 
 class Interactive_Frame(ttk.Frame):
@@ -62,21 +71,28 @@ class Interactive_Frame(ttk.Frame):
 
     def create_panels(self) -> None:
         grid_row = tk.IntVar(self, 0)
-        Mode_Selection_Panel(self, self.presenter, grid_row=grid_row)
-        Emergency_Stop_Panel(self, self.presenter, grid_row=grid_row)
-        Interlock_Panel(self, self.presenter, grid_row=grid_row)
-        Power_Panel(self, self.presenter, grid_row=grid_row)
+        self.pnl_mode = Mode_Selection_Panel(self, self.presenter, grid_row=grid_row)
+        self.pnl_estop = Emergency_Stop_Panel(self, self.presenter, grid_row=grid_row)
+        self.pnl_interlock = Interlock_Panel(self, self.presenter, grid_row=grid_row)
+        self.pnl_power = Power_Panel(self, self.presenter, grid_row=grid_row)
 
         # ttk.Separator(self, orient="vertical").grid(
         #     row=0, column=1, rowspan=grid_row.get(), sticky="NS"
         # )
 
-        Heartbeat_Panel(self, self.presenter, grid_row=grid_row)
-        Echo_String_Panel(self, self.presenter, grid_row=grid_row)
+        self.pnl_heartbeat = Heartbeat_Panel(self, self.presenter, grid_row=grid_row)
+        self.pnl_echo_str = Echo_String_Panel(self, self.presenter, grid_row=grid_row)
 
         ttk.Separator(self, orient="vertical").grid(
             row=0, column=3, rowspan=grid_row.get(), sticky="NS"
         )
+
+    def update_output_pins(self) -> None:
+        pin_states = self.presenter.get_output_pin_states()
+        print(*pin_states["teach mode"])
+        self.pnl_echo_str.set_output_indicators(*pin_states["teach mode"])
+
+        # self.after(100, self.update_output_pins())
 
 
 class Triple_Split_Panel(ABC):
@@ -104,6 +120,13 @@ class Triple_Split_Panel(ABC):
         )
         grid_row.set(grid_row.get() + 1)
 
+        self.ind_off_img = ImageTk.PhotoImage(
+            Image.open(IMAGE_PATH + "indicator_off.png")
+        )
+        self.ind_on_img = ImageTk.PhotoImage(
+            Image.open(IMAGE_PATH + "indicator_on.png")
+        )
+
         self.create_left_widgets(frm_left)
         self.create_center_widgets(frm_center)
         self.create_right_widgets(frm_right)
@@ -122,17 +145,23 @@ class Triple_Split_Panel(ABC):
 
     def add_output_pin_pair(
         self, frame: ttk.Frame, lbl_left: str, lbl_right: str, grid_row: int
-    ) -> tuple[ttk.Radiobutton, ttk.Radiobutton]:
+    ) -> None:
         lbl_left = ttk.Label(frame, text=lbl_left)
         lbl_left.grid(row=grid_row, column=0, sticky="NSE")
-        indicator_left = ttk.Radiobutton(frame, state=tk.DISABLED)
-        indicator_left.grid(row=grid_row, column=1)
-        indicator_right = ttk.Radiobutton(frame, state=tk.DISABLED)
-        indicator_right.grid(row=grid_row, column=2)
+        self.ind_left = ttk.Label(frame, image=self.ind_off_img)
+        self.ind_left.grid(row=grid_row, column=1, sticky="")
+        self.ind_right = ttk.Label(frame, image=self.ind_off_img)
+        self.ind_right.grid(row=grid_row, column=2, sticky="")
         lbl_right = ttk.Label(frame, text=lbl_right)
         lbl_right.grid(row=grid_row, column=3, sticky="NSW")
 
-        return indicator_left, indicator_right
+    def set_output_indicators(self, left_state: bool, right_state: bool) -> None:
+        self.ind_left.configure(
+            image=(self.ind_on_img if left_state else self.ind_off_img)
+        )
+        self.ind_right.configure(
+            image=(self.ind_on_img if right_state else self.ind_off_img)
+        )
 
 
 class Mode_Selection_Panel(Triple_Split_Panel):
@@ -164,6 +193,7 @@ class Mode_Selection_Panel(Triple_Split_Panel):
             *self.valid_modes,
             command=self.presenter.set_mode,
         )
+        self.opt_mode_dropdown["menu"].configure(font=("TKDefault", FONT_SIZE))
         self.opt_mode_dropdown.config(width=10)
         self.opt_mode_dropdown.grid(row=1, column=0, sticky="W")
         self.presenter.set_mode(self.valid_modes[0])
@@ -205,12 +235,8 @@ class Mode_Selection_Panel(Triple_Split_Panel):
         self.chk_mode_bit_toggled()
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
-        self.ind_a1, self.ind_b1 = self.add_output_pin_pair(
-            frame, "Mode A1", "Mode B1", 0
-        )
-        self.ind_a2, self.ind_b2 = self.add_output_pin_pair(
-            frame, "Mode A2", "Mode B2", 1
-        )
+        self.add_output_pin_pair(frame, "Mode A1", "Mode B1", 0)
+        self.add_output_pin_pair(frame, "Mode A2", "Mode B2", 1)
 
     def chk_mode_bit_toggled(self) -> None:
         if self.bit_toggling_enabled.get():
@@ -272,6 +298,7 @@ class Emergency_Stop_Panel(Triple_Split_Panel):
             *self.dual_channel_trigger_states,
             command=self.toggle_delay_entry_state,
         )
+        opt_e_stop_dropdown["menu"].configure(font=("TKDefault", FONT_SIZE))
         opt_e_stop_dropdown.config(width=25)
         opt_e_stop_dropdown.grid(row=0, column=0, columnspan=3)
 
@@ -283,6 +310,7 @@ class Emergency_Stop_Panel(Triple_Split_Panel):
         self.ent_e_stop_delay = ttk.Entry(
             frame,
             width=2,
+            font=("TkDefaultFont", FONT_SIZE),
             justify="right",
             textvariable=self.e_stop_delay_ms,
             state=tk.DISABLED,
@@ -294,12 +322,8 @@ class Emergency_Stop_Panel(Triple_Split_Panel):
         ttk.Label(frame, text="ms").grid(row=1, column=2, sticky="W")
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
-        self.ind_e_stop_a, self.ind_e_stop_b = self.add_output_pin_pair(
-            frame, "E-Stop A", "E-Stop B", 0
-        )
-        self.ind_stop_a, self.ind_stop_b = self.add_output_pin_pair(
-            frame, "Stop A", "Stop B", 1
-        )
+        self.add_output_pin_pair(frame, "E-Stop A", "E-Stop B", 0)
+        self.add_output_pin_pair(frame, "Stop A", "Stop B", 1)
 
     def toggle_delay_entry_state(self, trigger_selection: str) -> None:
         if (
@@ -370,6 +394,7 @@ class Interlock_Panel(Triple_Split_Panel):
             *self.dual_channel_trigger_states,
             command=self.toggle_delay_entry_state,
         )
+        opt_interlock_dropdown["menu"].configure(font=("TKDefault", FONT_SIZE))
         opt_interlock_dropdown.config(width=25)
         opt_interlock_dropdown.grid(row=0, column=0, columnspan=3)
 
@@ -382,6 +407,7 @@ class Interlock_Panel(Triple_Split_Panel):
             frame,
             width=2,
             justify="right",
+            font=("TkDefaultFont", FONT_SIZE),
             textvariable=self.interlock_delay_ms,
             state=tk.DISABLED,
             validate="key",
@@ -392,9 +418,7 @@ class Interlock_Panel(Triple_Split_Panel):
         ttk.Label(frame, text="ms").grid(row=1, column=2, sticky="W")
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
-        self.ind_int_a, self.ind_int_b = self.add_output_pin_pair(
-            frame, "Interlock A", "Interlock B", 0
-        )
+        self.add_output_pin_pair(frame, "Interlock A", "Interlock B", 0)
 
     def toggle_delay_entry_state(self, trigger_selection: str) -> None:
         if (
@@ -446,9 +470,7 @@ class Power_Panel(Triple_Split_Panel):
         pass
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
-        self.ind_pwr_a, self.ind_pwr_b = self.add_output_pin_pair(
-            frame, "Power A", "Power B", 0
-        )
+        self.add_output_pin_pair(frame, "Power A", "Power B", 0)
 
 
 class Heartbeat_Panel(Triple_Split_Panel):
@@ -480,9 +502,7 @@ class Heartbeat_Panel(Triple_Split_Panel):
         ttk.Label(frame, text="Hz").grid(row=1, column=2)
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
-        self.ind_heart_a, self.ind_heart_b = self.add_output_pin_pair(
-            frame, "Heartbeat A", "Heartbeat B", 0
-        )
+        self.add_output_pin_pair(frame, "Heartbeat A", "Heartbeat B", 0)
 
 
 class Echo_String_Panel(Triple_Split_Panel):
@@ -510,12 +530,11 @@ class Echo_String_Panel(Triple_Split_Panel):
         self.ent_echo_string = ttk.Entry(
             frame,
             width=25,
+            font=("TkDefaultFont", FONT_SIZE),
             justify="left",
             textvariable=self.message,
         )
         self.ent_echo_string.grid(row=0, column=0, sticky="EW")
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
-        self.ind_teach_a, self.ind_teach_b = self.add_output_pin_pair(
-            frame, "Teach Mode A", "Teach Mode B", 0
-        )
+        self.add_output_pin_pair(frame, "Teach Mode A", "Teach Mode B", 0)
