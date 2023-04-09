@@ -16,6 +16,9 @@ class Presenter:
         self.model = model
         self.view = view
 
+    def get_output_pin_states(self) -> dict[str, tuple[bool]]:
+        return {"teach mode": (True, False)}
+
     def set_mode(self, mode: str) -> None:
         print(mode)
 
