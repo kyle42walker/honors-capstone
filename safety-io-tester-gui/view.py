@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from tkinter import filedialog as fd
 from typing import Protocol
 from abc import ABC, abstractmethod
 from PIL import ImageTk, Image
@@ -7,7 +8,7 @@ from PIL import ImageTk, Image
 
 TITLE = "Safety I/O Tester"
 IMAGE_PATH = "Resource/Images/"
-FONT_SIZE = 12
+FONT_SIZE = 11
 BUTTON_SIZE = (15, 1)
 
 
@@ -33,6 +34,12 @@ class Presenter(Protocol):
     def echo_string(self, message: str) -> None:
         ...
 
+    def start_logging_to_file(self, file_path: str) -> None:
+        ...
+
+    def stop_logging(self) -> None:
+        ...
+
 
 class View(tk.Tk):
     def __init__(self) -> None:
@@ -54,6 +61,9 @@ class View(tk.Tk):
 
     def set_output_pin_indicators(self, pin_states: dict[str, tuple[bool]]) -> None:
         self.frm_interactive.set_output_indicators(pin_states)
+
+    def log(self, message: str) -> None:
+        self.frm_logging.log_to_text_box(message)
 
 
 class Interactive_Frame(ttk.Frame):
@@ -198,6 +208,7 @@ class Mode_Selection_Panel(Interactive_Panel):
             font=("TkDefaultFont", FONT_SIZE, "bold"),
             anchor="center",
             width=BUTTON_SIZE[0] - 1,
+            background="light grey",
         )
 
         self.opt_mode_dropdown = ttk.OptionMenu(
@@ -208,7 +219,7 @@ class Mode_Selection_Panel(Interactive_Panel):
             style="BoldCentered.TMenubutton",
             command=self.presenter.set_mode,
         )
-        self.opt_mode_dropdown["menu"].configure(font=("TKDefault", FONT_SIZE))
+        self.opt_mode_dropdown["menu"].configure(font=("TKDefaultFont", FONT_SIZE))
         self.opt_mode_dropdown.grid(row=1, column=0, sticky="W")
         self.presenter.set_mode(self.valid_modes[0])
 
@@ -233,7 +244,7 @@ class Mode_Selection_Panel(Interactive_Panel):
             relief="groove",
             width=btn_size[0],
             height=btn_size[1],
-            font=("TKDefault", FONT_SIZE),
+            font=("TKDefaultFont", FONT_SIZE),
             command=lambda: self.presenter.toggle_mode_bit("A1"),
         )
         self.btn_a1_mode_bit.grid(row=1, column=0)
@@ -245,7 +256,7 @@ class Mode_Selection_Panel(Interactive_Panel):
             relief="groove",
             width=btn_size[0],
             height=btn_size[1],
-            font=("TKDefault", FONT_SIZE),
+            font=("TKDefaultFont", FONT_SIZE),
             command=lambda: self.presenter.toggle_mode_bit("A2"),
         )
         self.btn_a2_mode_bit.grid(row=2, column=0)
@@ -257,7 +268,7 @@ class Mode_Selection_Panel(Interactive_Panel):
             relief="groove",
             width=btn_size[0],
             height=btn_size[1],
-            font=("TKDefault", FONT_SIZE),
+            font=("TKDefaultFont", FONT_SIZE),
             command=lambda: self.presenter.toggle_mode_bit("B1"),
         )
         self.btn_b1_mode_bit.grid(row=1, column=1)
@@ -269,7 +280,7 @@ class Mode_Selection_Panel(Interactive_Panel):
             relief="groove",
             width=btn_size[0],
             height=btn_size[1],
-            font=("TKDefault", FONT_SIZE),
+            font=("TKDefaultFont", FONT_SIZE),
             command=lambda: self.presenter.toggle_mode_bit("B2"),
         )
         self.btn_b2_mode_bit.grid(row=2, column=1)
@@ -316,7 +327,7 @@ class Emergency_Stop_Panel(Interactive_Panel):
             relief="groove",
             width=BUTTON_SIZE[0],
             height=BUTTON_SIZE[1],
-            font=("TKDefault", FONT_SIZE, "bold"),
+            font=("TKDefaultFont", FONT_SIZE, "bold"),
             command=lambda: self.presenter.trigger_e_stop(
                 self.dual_channel_trigger_states.index(
                     self.e_stop_trigger_selection.get()
@@ -345,7 +356,7 @@ class Emergency_Stop_Panel(Interactive_Panel):
             *self.dual_channel_trigger_states,
             command=self.toggle_delay_entry_state,
         )
-        opt_e_stop_dropdown["menu"].configure(font=("TKDefault", FONT_SIZE))
+        opt_e_stop_dropdown["menu"].configure(font=("TKDefaultFont", FONT_SIZE))
         opt_e_stop_dropdown.config(width=25)
         opt_e_stop_dropdown.grid(row=0, column=0, columnspan=3)
 
@@ -416,7 +427,7 @@ class Interlock_Panel(Interactive_Panel):
             relief="groove",
             width=BUTTON_SIZE[0],
             height=BUTTON_SIZE[1],
-            font=("TKDefault", FONT_SIZE, "bold"),
+            font=("TKDefaultFont", FONT_SIZE, "bold"),
             command=lambda: self.presenter.trigger_interlock(
                 self.dual_channel_trigger_states.index(
                     self.interlock_trigger_selection.get()
@@ -445,7 +456,7 @@ class Interlock_Panel(Interactive_Panel):
             *self.dual_channel_trigger_states,
             command=self.toggle_delay_entry_state,
         )
-        opt_interlock_dropdown["menu"].configure(font=("TKDefault", FONT_SIZE))
+        opt_interlock_dropdown["menu"].configure(font=("TKDefaultFont", FONT_SIZE))
         opt_interlock_dropdown.config(width=25)
         opt_interlock_dropdown.grid(row=0, column=0, columnspan=3)
 
@@ -515,7 +526,7 @@ class Power_Panel(Interactive_Panel):
             relief="groove",
             width=BUTTON_SIZE[0],
             height=BUTTON_SIZE[1],
-            font=("TKDefault", FONT_SIZE, "bold"),
+            font=("TKDefaultFont", FONT_SIZE, "bold"),
             command=self.presenter.trigger_power,
         )
         btn_power.grid(row=1, column=0, sticky="W")
@@ -548,7 +559,7 @@ class Heartbeat_Panel(Interactive_Panel):
             relief="groove",
             width=BUTTON_SIZE[0],
             height=BUTTON_SIZE[1],
-            font=("TKDefault", FONT_SIZE, "bold"),
+            font=("TKDefaultFont", FONT_SIZE, "bold"),
             command=self.presenter.measure_heartbeat,
         )
         self.btn_measure_hearbeat.grid(row=1, column=0, sticky="W")
@@ -587,7 +598,7 @@ class Echo_String_Panel(Interactive_Panel):
             relief="groove",
             width=BUTTON_SIZE[0],
             height=BUTTON_SIZE[1],
-            font=("TKDefault", FONT_SIZE, "bold"),
+            font=("TKDefaultFont", FONT_SIZE, "bold"),
             command=lambda: self.presenter.echo_string(self.message.get()),
         )
         self.btn_echo_string.grid(row=1, column=0, sticky="W")
@@ -614,3 +625,69 @@ class Logging_Frame(ttk.Frame):
     def __init__(self, parent: View, presenter: Presenter, **kwargs) -> None:
         super().__init__(parent, **kwargs)
         self.presenter = presenter
+        self.text_box_size = (82, 10)
+
+        self.create_widgets()
+
+    def create_widgets(self) -> None:
+        lbl_logging = ttk.Label(self, text="Logging:")
+        lbl_logging.grid(row=0, column=0, pady=5, sticky="SW")
+
+        self.btn_toggle_logging = tk.Button(
+            self,
+            text="Start Logging to File",
+            background="light grey",
+            relief="groove",
+            width=BUTTON_SIZE[0],
+            height=BUTTON_SIZE[1],
+            font=("TkDefaultFont", FONT_SIZE),
+            command=self.toggle_logging_to_file,
+        )
+        self.btn_toggle_logging.grid(row=0, column=1, pady=5, sticky="SE")
+
+        self.txt_logging = tk.Text(
+            self,
+            width=self.text_box_size[0],
+            height=self.text_box_size[1],
+            relief="groove",
+            borderwidth=2,
+            font=("TkDefaultFont", FONT_SIZE),
+        )
+        self.txt_logging.grid(row=1, column=0, columnspan=2, sticky="EW", pady=10)
+        self.txt_logging.configure(state=tk.DISABLED)
+
+    def toggle_logging_to_file(self) -> None:
+        """Toggle logging to file"""
+        logging_is_off = self.btn_toggle_logging.cget("text") == "Start Logging to File"
+        if logging_is_off:
+            file_path = self.prompt_log_file_path()
+            # do nothing if user cancels file selection
+            if file_path:
+                self.presenter.start_logging_to_file(file_path)
+                self.btn_toggle_logging.configure(text="Stop Logging to File")
+        else:
+            self.presenter.stop_logging_to_file()
+            self.btn_toggle_logging.configure(text="Start Logging to File")
+
+    def prompt_log_file_path(self) -> str:
+        """Prompt user to select a file to log to"""
+        file_path = fd.asksaveasfilename(
+            title="Select file",
+            filetypes=((".txt files", "*.txt"), ("All files", "*.*")),
+        )
+
+        return file_path
+
+    def log_to_text_box(self, message: str) -> None:
+        """Log a message to the text box"""
+        self.txt_logging.configure(state=tk.NORMAL)
+
+        # insert the message at the end of the text box
+        self.txt_logging.insert(tk.END, message + "\n")
+
+        # delete the first line if the text box is full
+        if self.txt_logging.yview()[1] != 1.0:
+            self.txt_logging.delete(1.0, 2.0)
+
+        # make text box readonly
+        self.txt_logging.configure(state=tk.DISABLED)
