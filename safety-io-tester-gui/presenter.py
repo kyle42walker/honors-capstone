@@ -12,9 +12,6 @@ class Model(Protocol):
     def get_output_pin_states(self) -> dict[str, tuple[bool]]:
         ...
 
-    def start_logging(self, filename: str) -> None:
-        ...
-
 
 class View(Protocol):
     def init_gui(self, presenter: Presenter) -> None:
@@ -44,7 +41,7 @@ class Presenter:
     def toggle_mode_bit(self, bit_id: str) -> None:
         logger.debug(f"mode bit {bit_id} toggled")
 
-    def trigger_e_stop(self, trigger_selection_index: int, delay_ms: str) -> None:
+    def toggle_e_stop(self, trigger_selection_index: int, delay_ms: str) -> None:
         match (trigger_selection_index):
             case 0:
                 logger.debug(f"both e_stops triggered")
@@ -57,7 +54,7 @@ class Presenter:
             case 4:
                 logger.debug(f"e_stop b only")
 
-    def trigger_interlock(self, trigger_selection_index: int, delay_ms: str) -> None:
+    def toggle_interlock(self, trigger_selection_index: int, delay_ms: str) -> None:
         match (trigger_selection_index):
             case 0:
                 logger.debug(f"both interlocks triggered")
@@ -70,7 +67,7 @@ class Presenter:
             case 4:
                 logger.debug(f"interlock b only")
 
-    def trigger_power(self) -> None:
+    def toggle_power(self) -> None:
         logger.debug(f"power toggled")
 
     def measure_heartbeat(self) -> None:

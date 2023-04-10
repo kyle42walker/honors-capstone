@@ -9,7 +9,6 @@ from PIL import ImageTk, Image
 TITLE = "Safety I/O Tester"
 IMAGE_PATH = "Resource/Images/"
 FONT_SIZE = 11
-BUTTON_SIZE = (15, 1)
 
 
 class Presenter(Protocol):
@@ -19,13 +18,13 @@ class Presenter(Protocol):
     def toggle_mode_bit(self, bit_id: str) -> None:
         ...
 
-    def trigger_e_stop(self, trigger_selection_index: int, delay_ms: str) -> None:
+    def toggle_e_stop(self, trigger_selection_index: int, delay_ms: str) -> None:
         ...
 
-    def trigger_interlock(self, trigger_selection_index: int, delay_ms: str) -> None:
+    def toggle_interlock(self, trigger_selection_index: int, delay_ms: str) -> None:
         ...
 
-    def trigger_power(self) -> None:
+    def toggle_power(self) -> None:
         ...
 
     def measure_heartbeat(self) -> None:
@@ -37,7 +36,7 @@ class Presenter(Protocol):
     def start_logging_to_file(self, file_path: str) -> None:
         ...
 
-    def stop_logging(self) -> None:
+    def stop_logging_to_file(self) -> None:
         ...
 
 
@@ -51,6 +50,9 @@ class View(tk.Tk):
         # Set font size
         style = ttk.Style(self)
         style.configure(".", font=("TkDefaultFont", FONT_SIZE))
+
+        # Default button size for consistency
+        self.button_size = (15, 1)
 
     def init_gui(self, presenter: Presenter) -> None:
         self.frm_interactive = Interactive_Frame(self, presenter)
@@ -73,6 +75,7 @@ class Interactive_Frame(ttk.Frame):
     def __init__(self, parent: View, presenter: Presenter, **kwargs) -> None:
         super().__init__(parent, **kwargs)
         self.presenter = presenter
+        self.button_size = parent.button_size
         self.create_panels()
 
     def create_panels(self) -> None:
@@ -112,6 +115,7 @@ class Interactive_Panel(ABC):
         self, parent: ttk.Frame, presenter: Presenter, grid_row: tk.IntVar
     ) -> None:
         self.presenter = presenter
+        self.button_size = parent.button_size
 
         padx = 10
         pady = 10
@@ -129,6 +133,8 @@ class Interactive_Panel(ABC):
         )
         grid_row.set(grid_row.get() + 1)
 
+        # Create output pin indicator images
+        self.output_pin_indicators = {}
         self.ind_off_img = ImageTk.PhotoImage(
             Image.open(IMAGE_PATH + "indicator_off.png")
         )
@@ -136,7 +142,7 @@ class Interactive_Panel(ABC):
             Image.open(IMAGE_PATH + "indicator_on.png")
         )
 
-        self.output_pin_indicators = {}
+        # Create widgets
         self.create_left_widgets(frm_left)
         self.create_center_widgets(frm_center)
         self.create_right_widgets(frm_right)
@@ -207,7 +213,7 @@ class Mode_Selection_Panel(Interactive_Panel):
             "BoldCentered.TMenubutton",
             font=("TkDefaultFont", FONT_SIZE, "bold"),
             anchor="center",
-            width=BUTTON_SIZE[0] - 1,
+            width=self.button_size[0] - 1,
             background="light grey",
         )
 
@@ -236,14 +242,14 @@ class Mode_Selection_Panel(Interactive_Panel):
         chk_mode_bit_toggle.grid(row=0, column=0, columnspan=2)
 
         # Buttons to toggle mode bits (A1, A2, B1, B2)
-        btn_size = (10, 1)
+        bit_button_size = (10, 1)
         self.btn_a1_mode_bit = tk.Button(
             frame,
             text="A1",
             background="light grey",
             relief="groove",
-            width=btn_size[0],
-            height=btn_size[1],
+            width=bit_button_size[0],
+            height=bit_button_size[1],
             font=("TKDefaultFont", FONT_SIZE),
             command=lambda: self.presenter.toggle_mode_bit("A1"),
         )
@@ -254,8 +260,8 @@ class Mode_Selection_Panel(Interactive_Panel):
             text="A2",
             background="light grey",
             relief="groove",
-            width=btn_size[0],
-            height=btn_size[1],
+            width=bit_button_size[0],
+            height=bit_button_size[1],
             font=("TKDefaultFont", FONT_SIZE),
             command=lambda: self.presenter.toggle_mode_bit("A2"),
         )
@@ -266,8 +272,8 @@ class Mode_Selection_Panel(Interactive_Panel):
             text="B1",
             background="light grey",
             relief="groove",
-            width=btn_size[0],
-            height=btn_size[1],
+            width=bit_button_size[0],
+            height=bit_button_size[1],
             font=("TKDefaultFont", FONT_SIZE),
             command=lambda: self.presenter.toggle_mode_bit("B1"),
         )
@@ -278,8 +284,8 @@ class Mode_Selection_Panel(Interactive_Panel):
             text="B2",
             background="light grey",
             relief="groove",
-            width=btn_size[0],
-            height=btn_size[1],
+            width=bit_button_size[0],
+            height=bit_button_size[1],
             font=("TKDefaultFont", FONT_SIZE),
             command=lambda: self.presenter.toggle_mode_bit("B2"),
         )
@@ -325,10 +331,10 @@ class Emergency_Stop_Panel(Interactive_Panel):
             text="E-Stop",
             background="red",
             relief="groove",
-            width=BUTTON_SIZE[0],
-            height=BUTTON_SIZE[1],
+            width=self.button_size[0],
+            height=self.button_size[1],
             font=("TKDefaultFont", FONT_SIZE, "bold"),
-            command=lambda: self.presenter.trigger_e_stop(
+            command=lambda: self.presenter.toggle_e_stop(
                 self.dual_channel_trigger_states.index(
                     self.e_stop_trigger_selection.get()
                 ),
@@ -425,10 +431,10 @@ class Interlock_Panel(Interactive_Panel):
             text="Interlock",
             background="yellow",
             relief="groove",
-            width=BUTTON_SIZE[0],
-            height=BUTTON_SIZE[1],
+            width=self.button_size[0],
+            height=self.button_size[1],
             font=("TKDefaultFont", FONT_SIZE, "bold"),
-            command=lambda: self.presenter.trigger_interlock(
+            command=lambda: self.presenter.toggle_interlock(
                 self.dual_channel_trigger_states.index(
                     self.interlock_trigger_selection.get()
                 ),
@@ -524,10 +530,10 @@ class Power_Panel(Interactive_Panel):
             text="Power",
             background="green3",
             relief="groove",
-            width=BUTTON_SIZE[0],
-            height=BUTTON_SIZE[1],
+            width=self.button_size[0],
+            height=self.button_size[1],
             font=("TKDefaultFont", FONT_SIZE, "bold"),
-            command=self.presenter.trigger_power,
+            command=self.presenter.toggle_power,
         )
         btn_power.grid(row=1, column=0, sticky="W")
 
@@ -557,8 +563,8 @@ class Heartbeat_Panel(Interactive_Panel):
             text="Measure Hearbeat",
             background="light grey",
             relief="groove",
-            width=BUTTON_SIZE[0],
-            height=BUTTON_SIZE[1],
+            width=self.button_size[0],
+            height=self.button_size[1],
             font=("TKDefaultFont", FONT_SIZE, "bold"),
             command=self.presenter.measure_heartbeat,
         )
@@ -596,8 +602,8 @@ class Echo_String_Panel(Interactive_Panel):
             text="Send to LCD",
             background="light grey",
             relief="groove",
-            width=BUTTON_SIZE[0],
-            height=BUTTON_SIZE[1],
+            width=self.button_size[0],
+            height=self.button_size[1],
             font=("TKDefaultFont", FONT_SIZE, "bold"),
             command=lambda: self.presenter.echo_string(self.message.get()),
         )
@@ -625,6 +631,7 @@ class Logging_Frame(ttk.Frame):
     def __init__(self, parent: View, presenter: Presenter, **kwargs) -> None:
         super().__init__(parent, **kwargs)
         self.presenter = presenter
+        self.button_size = parent.button_size
         self.text_box_size = (82, 10)
 
         self.create_widgets()
@@ -638,8 +645,8 @@ class Logging_Frame(ttk.Frame):
             text="Start Logging to File",
             background="light grey",
             relief="groove",
-            width=BUTTON_SIZE[0],
-            height=BUTTON_SIZE[1],
+            width=self.button_size[0],
+            height=self.button_size[1],
             font=("TkDefaultFont", FONT_SIZE),
             command=self.toggle_logging_to_file,
         )
@@ -689,5 +696,5 @@ class Logging_Frame(ttk.Frame):
         if self.txt_logging.yview()[1] != 1.0:
             self.txt_logging.delete(1.0, 2.0)
 
-        # make text box readonly
+        # return text box to readonly state
         self.txt_logging.configure(state=tk.DISABLED)
