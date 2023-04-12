@@ -9,10 +9,13 @@ logger = logging.getLogger("safety_io_logger")  # logger for all modules
 
 
 class Model(Protocol):
-    def get_output_pin_states(self) -> dict[str, tuple[bool]]:
+    def read_output_pin_states(self) -> dict[str, tuple[bool]]:
         ...
 
-    def set_mode(self, mode: str) -> None:
+    def write_mode(self, mode: str) -> None:
+        ...
+
+    def detect_arduino_ports(self) -> list[str]:
         ...
 
     def connect_to_serial_port(self, port: str) -> None:
@@ -21,6 +24,12 @@ class Model(Protocol):
 
 class View(Protocol):
     def init_gui(self, presenter: Presenter) -> None:
+        ...
+
+    def enable_widgets(self) -> None:
+        ...
+
+    def disable_widgets(self) -> None:
         ...
 
     def set_output_pin_indicators(self, pin_states: dict[str, tuple[bool]]) -> None:
@@ -45,13 +54,14 @@ class Presenter:
         """
         Set the mode of the safety IO board
 
-        mode: must be one of ["Automatic", "Stop", "Manual", "Mute"]
+        mode: must be "Automatic", "Stop", "Manual", or "Mute"
         """
-        logger.debug(f"Mode set to '{mode}'.")
-        self.model.set_mode(mode)
+        logger.debug(f"Mode set to '{mode}'")
+        self.model.write_mode(mode)
 
     def toggle_mode_bit(self, bit_id: str) -> None:
-        logger.debug(f"mode bit {bit_id} toggled")
+        logger.debug(f"Mode bit '{bit_id}' toggled")
+        self.model.write_mode(bit_id)
 
     def toggle_e_stop(self, trigger_selection_index: int, delay_ms: str) -> None:
         match (trigger_selection_index):
@@ -89,37 +99,61 @@ class Presenter:
         logger.debug(f"echo: {message}")
 
     def connect_to_serial_port(self, port: str) -> None:
-        logger.debug(f"connecting to serial port {port}")
-        self.model.connect_to_serial_port(port)
+        """
+        Connect to serial port
+
+        port: port to connect to. If None, try to detect port automatically
+        """
+        # If no port is specified, try to detect one
+        if not port:
+            port_list = self.model.detect_arduino_ports()
+
+            # If no port is detected, return
+            if not port_list:
+                logger.info("No compatible Arduino devices detected")
+                return
+
+            # If multiple ports are detected, select the lexicographically lowest ID
+            if len(port_list) > 1:
+                logger.info("Multiple devices detected - Selecting the lowest port ID")
+            port = port_list[0]
+
+        # Connect to serial port
+        if self.model.connect_to_serial_port(port):
+            logger.info(f"Successfully connected to serial port '{port}'")
+            self.view.enable_widgets()
+        else:
+            logger.info(f"Failed to connect to serial port '{port}'")
+            self.view.disable_widgets()
 
     def run(self) -> None:
-        # initialize GUI
+        # Initialize GUI
         self.view.init_gui(self)
 
-        # start logging
+        # Start logging
         self.start_logger()
 
-        # start gui
+        # Start gui
         self.view.after(POLLING_RATE, self.update_output_pin_indicators)
         self.view.mainloop()
 
     def update_output_pin_indicators(self) -> None:
-        # update indicators in GUI by polling output pin states every POLLING_RATE ms
-        self.view.set_output_pin_indicators(self.model.get_output_pin_states())
+        # Update indicators in GUI by polling output pin states every POLLING_RATE ms
+        self.view.set_output_pin_indicators(self.model.read_output_pin_states())
         self.view.after(POLLING_RATE, self.update_output_pin_indicators)
 
     def start_logger(self) -> None:
-        # configure logger
+        # Configure logger
         logger.setLevel(logging.DEBUG)
         self.log_formatter = logging.Formatter("%(asctime)s - %(message)s")
 
-        # start console logging
+        # Start console logging
         console_handler = logging.StreamHandler()
         console_handler.setLevel(logging.DEBUG)
         console_handler.setFormatter(self.log_formatter)
         logger.addHandler(console_handler)
 
-        # start GUI logging
+        # Start GUI logging
         gui_handler = Gui_Log_Handler(self.view)
         gui_handler.setLevel(logging.INFO)
         gui_handler.setFormatter(self.log_formatter)

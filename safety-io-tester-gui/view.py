@@ -65,6 +65,12 @@ class View(tk.Tk):
         self.frm_interactive.grid(row=0, column=0)
         self.frm_logging.grid(row=1, column=0)
 
+    def enable_widgets(self) -> None:
+        print("enable widgets stub")
+
+    def disable_widgets(self) -> None:
+        print("disable widgets stub")
+
     def set_output_pin_indicators(self, pin_states: dict[str, tuple[bool]]) -> None:
         self.frm_interactive.set_output_indicators(pin_states)
 
