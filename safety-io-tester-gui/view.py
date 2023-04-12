@@ -33,6 +33,9 @@ class Presenter(Protocol):
     def echo_string(self, message: str) -> None:
         ...
 
+    def connect_to_serial_port(self, port: str = None) -> None:
+        ...
+
     def start_logging_to_file(self, file_path: str) -> None:
         ...
 
@@ -47,9 +50,10 @@ class View(tk.Tk):
         self.iconphoto(False, tk.PhotoImage(file=IMAGE_PATH + "brooks_logo.png"))
         self.resizable(False, False)
 
-        # Set font size
+        # Set font size for all widgets
         style = ttk.Style(self)
         style.configure(".", font=("TkDefaultFont", FONT_SIZE))
+        self.option_add("*Font", ("TkDefaultFont", FONT_SIZE))
 
         # Default button size for consistency
         self.button_size = (15, 1)
@@ -80,6 +84,7 @@ class Interactive_Frame(ttk.Frame):
 
     def create_panels(self) -> None:
         grid_row = tk.IntVar(self, 0)
+        # self.pnl_ser_con = Serial_Connect_Panel(self, self.presenter, grid_row=grid_row)
         self.pnl_mode = Mode_Selection_Panel(self, self.presenter, grid_row=grid_row)
         self.pnl_estop = Emergency_Stop_Panel(self, self.presenter, grid_row=grid_row)
         self.pnl_interlock = Interlock_Panel(self, self.presenter, grid_row=grid_row)
@@ -186,6 +191,58 @@ class Interactive_Panel(ABC):
         )
 
 
+# class Serial_Connect_Panel(Interactive_Panel):
+
+#     """Controls to connect to the serial port"""
+
+#     def __init__(
+#         self, parent: ttk.Frame, presenter: Presenter, grid_row: tk.IntVar
+#     ) -> None:
+#         super().__init__(parent, presenter, grid_row)
+
+#     def create_left_widgets(self, frame: ttk.Frame) -> None:
+#         lbl_serial_connect = ttk.Label(frame, text="Serial Connect:")
+#         lbl_serial_connect.grid(row=0, column=0, sticky="NW")
+
+#         self.btn_connect = tk.Button(
+#             frame,
+#             text="Connect",
+#             background="light grey",
+#             relief="groove",
+#             width=self.button_size[0],
+#             height=self.button_size[1],
+#             font=("TKDefaultFont", FONT_SIZE, "bold"),
+#             command=lambda: self.presenter.connect_to_serial_port(
+#                 self.com_port.get().upper()
+#             ),
+#         )
+#         self.btn_connect.grid(row=1, column=0, sticky="W")
+
+#     def create_center_widgets(self, frame: ttk.Frame) -> None:
+#         lbl__port = ttk.Label(frame, text="Specify Port:")
+#         lbl__port.grid(row=0, column=0, sticky="E")
+
+#         self.com_port = tk.StringVar(frame)
+#         self.ent_com_port = ttk.Entry(
+#             frame,
+#             width=14,
+#             font=("TkDefaultFont", FONT_SIZE),
+#             justify="left",
+#             textvariable=self.com_port,
+#         )
+#         self.ent_com_port.grid(row=0, column=2, sticky="W")
+
+#     def create_right_widgets(self, frame: ttk.Frame) -> None:
+#         ttk.Label(frame, text="Status:").grid(row=0, column=0, sticky="E")
+
+#         lbl_status = ttk.Label(
+#             frame,
+#             text="Disconnected",
+#             foreground="red",
+#         )
+#         lbl_status.grid(row=0, column=1, sticky="W")
+
+
 class Mode_Selection_Panel(Interactive_Panel):
 
     """Mode selection controls"""
@@ -208,41 +265,36 @@ class Mode_Selection_Panel(Interactive_Panel):
         ]
         self.mode_selection = tk.StringVar(frame)
 
-        style = ttk.Style()
-        style.configure(
-            "BoldCentered.TMenubutton",
-            font=("TkDefaultFont", FONT_SIZE, "bold"),
-            anchor="center",
-            width=self.button_size[0] - 1,
-            background="light grey",
-        )
-
-        self.opt_mode_dropdown = ttk.OptionMenu(
+        self.opt_mode_dropdown = ttk.Combobox(
             frame,
-            self.mode_selection,
-            self.valid_modes[0],
-            *self.valid_modes,
-            style="BoldCentered.TMenubutton",
-            command=self.presenter.set_mode,
+            textvariable=self.mode_selection,
+            values=self.valid_modes,
+            state="readonly",
+            width=self.button_size[0],
+            font=("TKDefaultFont", FONT_SIZE, "bold"),
         )
-        self.opt_mode_dropdown["menu"].configure(font=("TKDefaultFont", FONT_SIZE))
         self.opt_mode_dropdown.grid(row=1, column=0, sticky="W")
-        self.presenter.set_mode(self.valid_modes[0])
+        self.opt_mode_dropdown.bind(
+            "<<ComboboxSelected>>",
+            lambda _: self.presenter.set_mode(self.mode_selection.get()),
+        )
 
-    def create_center_widgets(self, frame: ttk.Frame) -> None:
         # Advanced bit toggling to set mode
         self.bit_toggling_enabled = tk.BooleanVar(frame)
 
         chk_mode_bit_toggle = ttk.Checkbutton(
             frame,
-            text="Enable Mode Bit Toggling",
+            text="Enable Bit Toggling",
             variable=self.bit_toggling_enabled,
             command=self.chk_mode_bit_toggled,
         )
-        chk_mode_bit_toggle.grid(row=0, column=0, columnspan=2)
+        chk_mode_bit_toggle.grid(row=2, column=0)
 
+    def create_center_widgets(self, frame: ttk.Frame) -> None:
         # Buttons to toggle mode bits (A1, A2, B1, B2)
         bit_button_size = (10, 1)
+        padx = pady = 4
+
         self.btn_a1_mode_bit = tk.Button(
             frame,
             text="A1",
@@ -253,7 +305,7 @@ class Mode_Selection_Panel(Interactive_Panel):
             font=("TKDefaultFont", FONT_SIZE),
             command=lambda: self.presenter.toggle_mode_bit("A1"),
         )
-        self.btn_a1_mode_bit.grid(row=1, column=0)
+        self.btn_a1_mode_bit.grid(row=1, column=0, padx=padx, pady=pady)
 
         self.btn_a2_mode_bit = tk.Button(
             frame,
@@ -265,7 +317,7 @@ class Mode_Selection_Panel(Interactive_Panel):
             font=("TKDefaultFont", FONT_SIZE),
             command=lambda: self.presenter.toggle_mode_bit("A2"),
         )
-        self.btn_a2_mode_bit.grid(row=2, column=0)
+        self.btn_a2_mode_bit.grid(row=2, column=0, padx=padx, pady=pady)
 
         self.btn_b1_mode_bit = tk.Button(
             frame,
@@ -277,7 +329,7 @@ class Mode_Selection_Panel(Interactive_Panel):
             font=("TKDefaultFont", FONT_SIZE),
             command=lambda: self.presenter.toggle_mode_bit("B1"),
         )
-        self.btn_b1_mode_bit.grid(row=1, column=1)
+        self.btn_b1_mode_bit.grid(row=1, column=1, padx=padx, pady=pady)
 
         self.btn_b2_mode_bit = tk.Button(
             frame,
@@ -289,7 +341,7 @@ class Mode_Selection_Panel(Interactive_Panel):
             font=("TKDefaultFont", FONT_SIZE),
             command=lambda: self.presenter.toggle_mode_bit("B2"),
         )
-        self.btn_b2_mode_bit.grid(row=2, column=1)
+        self.btn_b2_mode_bit.grid(row=2, column=1, padx=padx, pady=pady)
 
         # Set initial button states
         self.chk_mode_bit_toggled()
@@ -306,7 +358,7 @@ class Mode_Selection_Panel(Interactive_Panel):
             self.btn_b1_mode_bit["state"] = tk.NORMAL
             self.btn_b2_mode_bit["state"] = tk.NORMAL
         else:
-            self.opt_mode_dropdown["state"] = tk.NORMAL
+            self.opt_mode_dropdown["state"] = "readonly"
             self.btn_a1_mode_bit["state"] = tk.DISABLED
             self.btn_a2_mode_bit["state"] = tk.DISABLED
             self.btn_b1_mode_bit["state"] = tk.DISABLED
