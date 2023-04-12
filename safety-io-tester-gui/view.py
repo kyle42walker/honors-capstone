@@ -33,7 +33,7 @@ class Presenter(Protocol):
     def echo_string(self, message: str) -> None:
         ...
 
-    def connect_to_serial_port(self, port: str = None) -> None:
+    def connect_to_serial_port(self, port: str) -> None:
         ...
 
     def start_logging_to_file(self, file_path: str) -> None:
@@ -84,7 +84,7 @@ class Interactive_Frame(ttk.Frame):
 
     def create_panels(self) -> None:
         grid_row = tk.IntVar(self, 0)
-        # self.pnl_ser_con = Serial_Connect_Panel(self, self.presenter, grid_row=grid_row)
+        self.pnl_ser_con = Serial_Connect_Panel(self, self.presenter, grid_row=grid_row)
         self.pnl_mode = Mode_Selection_Panel(self, self.presenter, grid_row=grid_row)
         self.pnl_estop = Emergency_Stop_Panel(self, self.presenter, grid_row=grid_row)
         self.pnl_interlock = Interlock_Panel(self, self.presenter, grid_row=grid_row)
@@ -191,56 +191,56 @@ class Interactive_Panel(ABC):
         )
 
 
-# class Serial_Connect_Panel(Interactive_Panel):
+class Serial_Connect_Panel(Interactive_Panel):
 
-#     """Controls to connect to the serial port"""
+    """Controls to connect to the serial port"""
 
-#     def __init__(
-#         self, parent: ttk.Frame, presenter: Presenter, grid_row: tk.IntVar
-#     ) -> None:
-#         super().__init__(parent, presenter, grid_row)
+    def __init__(
+        self, parent: ttk.Frame, presenter: Presenter, grid_row: tk.IntVar
+    ) -> None:
+        super().__init__(parent, presenter, grid_row)
 
-#     def create_left_widgets(self, frame: ttk.Frame) -> None:
-#         lbl_serial_connect = ttk.Label(frame, text="Serial Connect:")
-#         lbl_serial_connect.grid(row=0, column=0, sticky="NW")
+    def create_left_widgets(self, frame: ttk.Frame) -> None:
+        lbl_serial_connect = ttk.Label(frame, text="Serial Connect:")
+        lbl_serial_connect.grid(row=0, column=0, sticky="NW")
 
-#         self.btn_connect = tk.Button(
-#             frame,
-#             text="Connect",
-#             background="light grey",
-#             relief="groove",
-#             width=self.button_size[0],
-#             height=self.button_size[1],
-#             font=("TKDefaultFont", FONT_SIZE, "bold"),
-#             command=lambda: self.presenter.connect_to_serial_port(
-#                 self.com_port.get().upper()
-#             ),
-#         )
-#         self.btn_connect.grid(row=1, column=0, sticky="W")
+        self.btn_connect = tk.Button(
+            frame,
+            text="Connect",
+            background="light grey",
+            relief="groove",
+            width=self.button_size[0],
+            height=self.button_size[1],
+            font=("TKDefaultFont", FONT_SIZE, "bold"),
+            command=lambda: self.presenter.connect_to_serial_port(
+                self.com_port.get().upper()
+            ),
+        )
+        self.btn_connect.grid(row=1, column=0, sticky="W")
 
-#     def create_center_widgets(self, frame: ttk.Frame) -> None:
-#         lbl__port = ttk.Label(frame, text="Specify Port:")
-#         lbl__port.grid(row=0, column=0, sticky="E")
+    def create_center_widgets(self, frame: ttk.Frame) -> None:
+        lbl__port = ttk.Label(frame, text="Specify Port:")
+        lbl__port.grid(row=0, column=0, sticky="E")
 
-#         self.com_port = tk.StringVar(frame)
-#         self.ent_com_port = ttk.Entry(
-#             frame,
-#             width=14,
-#             font=("TkDefaultFont", FONT_SIZE),
-#             justify="left",
-#             textvariable=self.com_port,
-#         )
-#         self.ent_com_port.grid(row=0, column=2, sticky="W")
+        self.com_port = tk.StringVar(frame)
+        self.ent_com_port = ttk.Entry(
+            frame,
+            width=14,
+            font=("TkDefaultFont", FONT_SIZE),
+            justify="left",
+            textvariable=self.com_port,
+        )
+        self.ent_com_port.grid(row=0, column=2, sticky="W")
 
-#     def create_right_widgets(self, frame: ttk.Frame) -> None:
-#         ttk.Label(frame, text="Status:").grid(row=0, column=0, sticky="E")
+    def create_right_widgets(self, frame: ttk.Frame) -> None:
+        ttk.Label(frame, text="Status:").grid(row=0, column=0, sticky="E")
 
-#         lbl_status = ttk.Label(
-#             frame,
-#             text="Disconnected",
-#             foreground="red",
-#         )
-#         lbl_status.grid(row=0, column=1, sticky="W")
+        lbl_status = ttk.Label(
+            frame,
+            text="Disconnected",
+            foreground="red",
+        )
+        lbl_status.grid(row=0, column=1, sticky="W")
 
 
 class Mode_Selection_Panel(Interactive_Panel):

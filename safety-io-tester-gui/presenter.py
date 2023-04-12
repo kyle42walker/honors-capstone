@@ -12,6 +12,12 @@ class Model(Protocol):
     def get_output_pin_states(self) -> dict[str, tuple[bool]]:
         ...
 
+    def set_mode(self, mode: str) -> None:
+        ...
+
+    def connect_to_serial_port(self, port: str) -> None:
+        ...
+
 
 class View(Protocol):
     def init_gui(self, presenter: Presenter) -> None:
@@ -36,7 +42,13 @@ class Presenter:
         self.view = view
 
     def set_mode(self, mode: str) -> None:
-        logger.debug(f"mode set to {mode}")
+        """
+        Set the mode of the safety IO board
+
+        mode: must be one of ["Automatic", "Stop", "Manual", "Mute"]
+        """
+        logger.debug(f"Mode set to '{mode}'.")
+        self.model.set_mode(mode)
 
     def toggle_mode_bit(self, bit_id: str) -> None:
         logger.debug(f"mode bit {bit_id} toggled")
@@ -76,15 +88,16 @@ class Presenter:
     def echo_string(self, message: str) -> None:
         logger.debug(f"echo: {message}")
 
+    def connect_to_serial_port(self, port: str) -> None:
+        logger.debug(f"connecting to serial port {port}")
+        self.model.connect_to_serial_port(port)
+
     def run(self) -> None:
         # initialize GUI
         self.view.init_gui(self)
 
         # start logging
         self.start_logger()
-
-        # connect to saftey IO board
-        # self.model.connect_to_arduino()
 
         # start gui
         self.view.after(POLLING_RATE, self.update_output_pin_indicators)
