@@ -22,7 +22,7 @@ class MockSerialPort:
         """
         self.colcount = 0
 
-    def write_data(self, data: bytes):
+    def write(self, data: bytes):
         """
         Write data to stdout instead of to a serial port
 
@@ -30,7 +30,7 @@ class MockSerialPort:
         """
         import sys
 
-        sys.stdout.write(data)
+        sys.stdout.write(str(data))
         self.colcount += 1
         # simulated terminal width
         if self.colcount > 80:
@@ -115,7 +115,7 @@ class Model:
         self.serial = serial.Serial()
         self.serial.baudrate = BAUD_RATE
 
-    def detect_arduino_ports(self) -> list[str] | None:
+    def detect_arduino_ports(self) -> list[str]:
         """
         Get port names of all connected Arduinos
 
@@ -139,6 +139,10 @@ class Model:
         Returns:
             True if the connection was successful, False otherwise
         """
+        # Testing without an Arduino
+        self.serial = MockSerialPort()
+        return True
+
         try:
             self.serial.port = port
             self.serial.open()
@@ -146,40 +150,6 @@ class Model:
         except SerialException:
             self.serial.close()
             return False
-
-        # # self.serial = MockSerialPort()
-        # # return
-
-        # if port:
-        #     self.serial = self.serial.open(port, BAUD_RATE)
-        #     return
-
-        # # self.serial = ArduinoPort()
-        # ports = self.serial.get_arduino_port_list()
-
-        # # No Ardunio connected
-        # if not ports:
-        #     logger.info(
-        #         "Could not detect any accessible Arduino devices.\n \
-        #             \tTry using a different USB port or restarting the application."
-        #     )
-        #     return
-
-        # # Multiple Arduinos connected
-        # if len(ports) > 1:
-        #     logger.info(
-        #         "More than one Arduino is currently connected.\n \
-        #             \tThe Arduino with the lowest COM port ID has been selected."
-        #     )
-
-        # # Connect to Arduino with the lowest COM port identifier
-        # logger.info(f"Arduino connected on: {ports[0]}")
-        # self.serial.connect_to_arduino(ports[0])
-
-    # def send_data(self, data: bytes) -> None:
-    #     data_sent_successfully = self.serial.write_data(data)
-    #     if not data_sent_successfully:
-    #         logger.info("The Arduino was disconnected or has changed COM ports.")
 
     def write_data(self, data: bytes) -> bool:
         """
@@ -211,56 +181,78 @@ class Model:
             "teach": (True, False),
         }
 
-    def write_mode(self, mode_str: str = None, mode_bit: str = None) -> bool:
+    def write_mode(self, mode_str: str) -> bool:
         """
         Set the mode of the controller
 
+        Send data to the serial device in the following format:
         Index   Data byte
             0   M
-            1   (0|1) Mode A1
-            2   (0|1) Mode A2
-            3   (0|1) Mode B1
-            4   (0|1) Mode B2
+            1   (0|1) - Mode A1
+            2   (0|1) - Mode A2
+            3   (0|1) - Mode B1
+            4   (0|1) - Mode B2
+        e.g. "M1001" sets bits A1 and B2, setting the controller to "Manual" mode
 
         mode_str: must be one of ["Automatic", "Stop", "Manual", "Mute"]
+
+        Returns:
+            True if the data was sent successfully, False otherwise
+        """
+        # Convert mode string to corresponding mode bits
+        match (mode_str):
+            case "Automatic":
+                mode_bits = ["0", "1", "1", "0"]
+            case "Stop":
+                mode_bits = ["1", "0", "1", "0"]
+            case "Manual":
+                mode_bits = ["1", "0", "0", "1"]
+            case "Mute":
+                mode_bits = ["0", "1", "0", "1"]
+
+        # Send mode bits to the serial device
+        data = bytearray([ord("M")] + [ord(b) for b in mode_bits])
+        return self.write_data(data)
+
+    def write_mode_bit(self, mode_bit: str) -> bool:
+        """
+        Toggle the specified mode bit.
+        Values for nontoggled bits are read from the controller.
+
+        Send data to the serial device in the following format:
+        Index   Data byte
+            0   M
+            1   (0|1) - Mode A1
+            2   (0|1) - Mode A2
+            3   (0|1) - Mode B1
+            4   (0|1) - Mode B2
+        e.g. "M1001" sets bits A1 and B2, setting the controller to "Manual" mode
+
         mode_bit: must be one of ["A1", "A2", "B1", "B2"]
 
         Returns:
             True if the data was sent successfully, False otherwise
         """
-        if mode_str:
-            # Convert mode string to corresponding mode bits
-            match (mode_str):
-                case "Automatic":
-                    mode_bits = ["0", "1", "1", "0"]
-                case "Stop":
-                    mode_bits = ["1", "0", "1", "0"]
-                case "Manual":
-                    mode_bits = ["1", "0", "0", "1"]
-                case "Mute":
-                    mode_bits = ["0", "1", "0", "1"]
+        # Get current mode bits
+        pin_states = self.read_output_pin_states()
+        mode_ab1, mode_ab2 = [pin_states[key] for key in ["mode1", "mode2"]]
+        mode_bits = [
+            str(int(mode_ab1[0])),  # A1
+            str(int(mode_ab2[0])),  # A2
+            str(int(mode_ab1[1])),  # B1
+            str(int(mode_ab2[1])),  # B2
+        ]
 
-        elif mode_bit:
-            # Get current mode bits
-            pin_states = self.read_output_pin_states()
-            mode1, mode2 = [pin_states[key] for key in ["mode1", "mode2"]]
-            mode_bits = [
-                str(int(mode1[0])),
-                str(int(mode2[0])),
-                str(int(mode1[1])),
-                str(int(mode2[1])),
-            ]
-
-            # Toggle the specified mode bit
-            match mode_bit:
-                case "A1":
-                    mode_bits[0] = "1" if mode_bits[0] == "0" else "0"
-                case "A2":
-                    mode_bits[1] = "1" if mode_bits[1] == "0" else "0"
-                case "B1":
-                    mode_bits[2] = "1" if mode_bits[2] == "0" else "0"
-                case "B2":
-                    mode_bits[3] = "1" if mode_bits[3] == "0" else "0"
+        # Toggle the specified mode bit
+        match mode_bit:
+            case "A1":
+                mode_bits[0] = "1" if mode_bits[0] == "0" else "0"
+            case "A2":
+                mode_bits[1] = "1" if mode_bits[1] == "0" else "0"
+            case "B1":
+                mode_bits[2] = "1" if mode_bits[2] == "0" else "0"
+            case "B2":
+                mode_bits[3] = "1" if mode_bits[3] == "0" else "0"
 
         # Send mode bits to the serial device
         data = bytearray([ord("M")] + [ord(b) for b in mode_bits])

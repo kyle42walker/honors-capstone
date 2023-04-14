@@ -12,13 +12,16 @@ class Model(Protocol):
     def read_output_pin_states(self) -> dict[str, tuple[bool]]:
         ...
 
-    def write_mode(self, mode: str) -> None:
+    def write_mode(self, mode: str) -> bool:
+        ...
+
+    def write_mode_bit(self, bit_id: str) -> bool:
         ...
 
     def detect_arduino_ports(self) -> list[str]:
         ...
 
-    def connect_to_serial_port(self, port: str) -> None:
+    def connect_to_serial_port(self, port: str) -> bool:
         ...
 
 
@@ -26,10 +29,10 @@ class View(Protocol):
     def init_gui(self, presenter: Presenter) -> None:
         ...
 
-    def enable_widgets(self) -> None:
+    def connect(self) -> None:
         ...
 
-    def disable_widgets(self) -> None:
+    def disconnect(self) -> None:
         ...
 
     def set_output_pin_indicators(self, pin_states: dict[str, tuple[bool]]) -> None:
@@ -47,21 +50,86 @@ class View(Protocol):
 
 class Presenter:
     def __init__(self, model: Model, view: View) -> None:
+        """
+        Initialize the presenter
+        """
         self.model = model
         self.view = view
 
+    def run(self) -> None:
+        """
+        Run the application
+        """
+        # Initialize GUI
+        self.view.init_gui(self)
+
+        # Start logging
+        self.start_logger()
+
+        # Start GUI
+        self.view.after(POLLING_RATE, self.update_output_pin_indicators)
+        self.view.mainloop()
+
+    def update_output_pin_indicators(self) -> None:
+        """
+        Update the output pin indicators in the GUI
+
+        This function is called every POLLING_RATE ms
+        """
+        self.view.set_output_pin_indicators(self.model.read_output_pin_states())
+        self.view.after(POLLING_RATE, self.update_output_pin_indicators)
+
+    def connect_to_serial_port(self, port: str) -> None:
+        """
+        Connect to serial port
+
+        port: port to connect to. If None, try to detect Arduino port automatically
+        """
+        # If no port is specified, try to detect one
+        if not port:
+            port_list = self.model.detect_arduino_ports()
+
+            # If no port is detected, return
+            if not port_list:
+                logger.error("No compatible Arduino devices detected")
+                return
+
+            # If multiple ports are detected, select the lexicographically lowest ID
+            if len(port_list) > 1:
+                logger.info("Multiple devices detected - Selecting the lowest port ID")
+            port = port_list[0]
+
+        # Attempt to connect to serial port
+        if self.model.connect_to_serial_port(port):
+            logger.info(f"Successfully connected to serial port '{port}'")
+            self.view.connect()
+        else:
+            logger.error(f"Failed to connect to serial port '{port}'")
+            self.view.disconnect()
+
     def set_mode(self, mode: str) -> None:
         """
-        Set the mode of the safety IO board
+        Set the mode of the controller
 
         mode: must be "Automatic", "Stop", "Manual", or "Mute"
         """
-        logger.debug(f"Mode set to '{mode}'")
-        self.model.write_mode(mode)
+        if self.model.write_mode(mode):
+            logger.debug(f"Mode set to '{mode}'")
+        else:
+            logger.error("Failed to communincate with serial device")
+            self.view.disconnect()
 
     def toggle_mode_bit(self, bit_id: str) -> None:
-        logger.debug(f"Mode bit '{bit_id}' toggled")
-        self.model.write_mode(bit_id)
+        """
+        Toggle a single mode bit of the controller
+
+        bit_id: must be "A1", "A2", "B1", or "B2"
+        """
+        if self.model.write_mode_bit(bit_id):
+            logger.debug(f"Mode bit '{bit_id}' toggled")
+        else:
+            logger.error("Failed to communincate with serial device")
+            self.view.disconnect()
 
     def toggle_e_stop(self, trigger_selection_index: int, delay_ms: str) -> None:
         match (trigger_selection_index):
@@ -98,51 +166,10 @@ class Presenter:
     def echo_string(self, message: str) -> None:
         logger.debug(f"echo: {message}")
 
-    def connect_to_serial_port(self, port: str) -> None:
-        """
-        Connect to serial port
-
-        port: port to connect to. If None, try to detect port automatically
-        """
-        # If no port is specified, try to detect one
-        if not port:
-            port_list = self.model.detect_arduino_ports()
-
-            # If no port is detected, return
-            if not port_list:
-                logger.info("No compatible Arduino devices detected")
-                return
-
-            # If multiple ports are detected, select the lexicographically lowest ID
-            if len(port_list) > 1:
-                logger.info("Multiple devices detected - Selecting the lowest port ID")
-            port = port_list[0]
-
-        # Connect to serial port
-        if self.model.connect_to_serial_port(port):
-            logger.info(f"Successfully connected to serial port '{port}'")
-            self.view.enable_widgets()
-        else:
-            logger.info(f"Failed to connect to serial port '{port}'")
-            self.view.disable_widgets()
-
-    def run(self) -> None:
-        # Initialize GUI
-        self.view.init_gui(self)
-
-        # Start logging
-        self.start_logger()
-
-        # Start gui
-        self.view.after(POLLING_RATE, self.update_output_pin_indicators)
-        self.view.mainloop()
-
-    def update_output_pin_indicators(self) -> None:
-        # Update indicators in GUI by polling output pin states every POLLING_RATE ms
-        self.view.set_output_pin_indicators(self.model.read_output_pin_states())
-        self.view.after(POLLING_RATE, self.update_output_pin_indicators)
-
     def start_logger(self) -> None:
+        """
+        Start the console and GUI loggers
+        """
         # Configure logger
         logger.setLevel(logging.DEBUG)
         self.log_formatter = logging.Formatter("%(asctime)s - %(message)s")
@@ -160,19 +187,29 @@ class Presenter:
         logger.addHandler(gui_handler)
 
     def start_logging_to_file(self, file_path: str) -> None:
-        logger.info(f"logging started to {file_path}")
+        """
+        Start logging to file
 
+        file_path: path to log file
+        """
+        logger.info(f"Logging started to '{file_path}'")
+
+        # Open file and start logging
         file_handler = logging.FileHandler(file_path, mode="w")
         file_handler.setLevel(logging.INFO)
         file_handler.setFormatter(self.log_formatter)
         logger.addHandler(file_handler)
 
     def stop_logging_to_file(self) -> None:
+        """
+        Stop logging to any file started by start_logging_to_file()
+        """
+        # Remove any logging file handlers
         for handler in logger.handlers:
             if isinstance(handler, logging.FileHandler):
                 logger.removeHandler(handler)
 
-        logger.info(f"logging to file stopped")
+        logger.info(f"Logging to file stopped")
 
 
 class Gui_Log_Handler(logging.Handler):
@@ -184,5 +221,10 @@ class Gui_Log_Handler(logging.Handler):
         self.view = view
 
     def emit(self, record: logging.LogRecord):
+        """
+        Emit a log message by displaying it in the GUI
+
+        record: log record
+        """
         msg = self.format(record)
         self.view.log(msg)
