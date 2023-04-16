@@ -12,107 +12,10 @@ BAUD_RATE = 115200
 import time
 
 
-class MockSerialPort:
-
-    """Mock serial port for testing GUI without an Arduino"""
-
-    def __init__(self):
-        """
-        Initialize the mock serial port
-        """
-        self.colcount = 0
-
-    def write(self, data: bytes):
-        """
-        Write data to stdout instead of to a serial port
-
-        data: bytes to write to stdout
-        """
-        import sys
-
-        sys.stdout.write(str(data))
-        self.colcount += 1
-        # simulated terminal width
-        if self.colcount > 80:
-            sys.stdout.write("\n")
-            sys.colcount = 0
-        sys.stdout.flush()
-
-
-# class ArduinoPort:
-
-#     """Serial port for communicating with the Arduino"""
-
-#     def __init__(self, port: str = None):
-#         """
-#         Initialize the serial port
-
-#         port (optional): Arduino's COM port to connect to
-#         """
-#         if port:
-#             self.serial = serial.Serial(port, BAUD_RATE)
-#         else:
-#             self.serial = None
-
-#     def get_arduino_port_list(self) -> list[str] | None:
-#         """
-#         Get port names of all connected Arduinos
-
-#         Returns:
-#             A list of ports (e.g. '/dev/ttyUSB0' or 'COM3'),
-#             None if no Arduino is connected
-#         """
-#         return [
-#             p.device
-#             for p in serial.tools.list_ports.comports()
-#             if p.vid
-#             in [0x2341, 0x2A03, 0x1B4F, 0x239A]  # list of typical Arduino vendor IDs
-#         ]
-
-#     def connect_to_arduino_port(self, port: str) -> None:
-#         """
-#         Connect to the Arduino over the serial COM port
-
-#         port: COM port to connect to
-#         """
-#         self.serial = serial.Serial(port, BAUD_RATE)
-
-#     def write_data(self, data: bytes) -> bool:
-#         """
-#         Send data to the connected Arduino over the serial COM port
-
-#         data: bytes to send to the Arduino
-
-#         Returns:
-#             True if the data was sent successfully, False otherwise
-#         """
-#         try:
-#             self.serial.write(data)
-#             return True
-#         except SerialException:
-#             self.serial.close()
-#             return False
-
-#     def read_data(self, message_size: int) -> bytes | None:
-#         """
-#         Read data from the connected Arduino over the serial COM port
-
-#         message_size: number of bytes to read from the Arduino
-
-#         Returns:
-#             bytes read from the Arduino,
-#             None if the serial port
-#         """
-#         try:
-#             return self.serial.read(message_size, timeout=0.1)
-#         except SerialException:
-#             self.serial.close()
-#             return None
-
-
 class Model:
     def __init__(self) -> None:
-        self.serial = serial.Serial()
+        self.serial = MockSerialPort()  # for testing without Arduino
+        # self.serial = serial.Serial()
         self.serial.baudrate = BAUD_RATE
 
     def detect_arduino_ports(self) -> list[str]:
@@ -139,10 +42,6 @@ class Model:
         Returns:
             True if the connection was successful, False otherwise
         """
-        # Testing without an Arduino
-        self.serial = MockSerialPort()
-        return True
-
         try:
             self.serial.port = port
             self.serial.open()
@@ -150,6 +49,12 @@ class Model:
         except SerialException:
             self.serial.close()
             return False
+
+    def disconnect_from_serial_port(self) -> None:
+        """
+        Disconnect from the serial device
+        """
+        self.serial.close()
 
     def write_data(self, data: bytes) -> bool:
         """
@@ -257,6 +162,47 @@ class Model:
         # Send mode bits to the serial device
         data = bytearray([ord("M")] + [ord(b) for b in mode_bits])
         return self.write_data(data)
+
+
+class MockSerialPort:
+
+    """Mock serial port for testing GUI without an Arduino"""
+
+    def __init__(self):
+        """
+        Initialize the mock serial port
+        """
+        self.port = None
+        self.is_open = False
+
+    def open(self):
+        """
+        Open the mock serial port
+        """
+        self.is_open = True
+
+    def close(self):
+        """
+        Close the mock serial port
+        """
+        self.is_open = False
+
+    def write(self, data: bytes):
+        """
+        Write data to stdout instead of to a serial port
+
+        data: bytes to write to stdout
+
+        Raises:
+            SerialException if the mock serial port is not open
+        """
+        if not self.is_open:
+            raise SerialException("Mock serial port is not open")
+
+        import sys
+
+        sys.stdout.write(str(data) + "\n")
+        sys.stdout.flush()
 
 
 """

@@ -29,10 +29,7 @@ class View(Protocol):
     def init_gui(self, presenter: Presenter) -> None:
         ...
 
-    def connect(self) -> None:
-        ...
-
-    def disconnect(self) -> None:
+    def set_connection_status(self, status: str) -> None:
         ...
 
     def set_output_pin_indicators(self, pin_states: dict[str, tuple[bool]]) -> None:
@@ -102,10 +99,18 @@ class Presenter:
         # Attempt to connect to serial port
         if self.model.connect_to_serial_port(port):
             logger.info(f"Successfully connected to serial port '{port}'")
-            self.view.connect()
+            self.view.set_connection_status("Connected")
         else:
             logger.error(f"Failed to connect to serial port '{port}'")
-            self.view.disconnect()
+            self.view.set_connection_status("Disconnected")
+
+    def disconnect_from_serial_port(self) -> None:
+        """
+        Disconnect from serial port
+        """
+        self.model.disconnect_from_serial_port()
+        logger.info("Disconnected from serial port")
+        self.view.set_connection_status("Disconnected")
 
     def set_mode(self, mode: str) -> None:
         """
@@ -117,7 +122,7 @@ class Presenter:
             logger.debug(f"Mode set to '{mode}'")
         else:
             logger.error("Failed to communincate with serial device")
-            self.view.disconnect()
+            self.view.set_connection_status("Disconnected")
 
     def toggle_mode_bit(self, bit_id: str) -> None:
         """
@@ -129,7 +134,7 @@ class Presenter:
             logger.debug(f"Mode bit '{bit_id}' toggled")
         else:
             logger.error("Failed to communincate with serial device")
-            self.view.disconnect()
+            self.view.set_connection_status("Disconnected")
 
     def toggle_e_stop(self, trigger_selection_index: int, delay_ms: str) -> None:
         match (trigger_selection_index):

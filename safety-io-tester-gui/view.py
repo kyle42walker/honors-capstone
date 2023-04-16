@@ -12,6 +12,12 @@ FONT_SIZE = 11
 
 
 class Presenter(Protocol):
+    def connect_to_serial_port(self, port: str) -> None:
+        ...
+
+    def disconnect_from_serial_port(self) -> None:
+        ...
+
     def set_mode(self, mode: str) -> None:
         ...
 
@@ -31,9 +37,6 @@ class Presenter(Protocol):
         ...
 
     def echo_string(self, message: str) -> None:
-        ...
-
-    def connect_to_serial_port(self, port: str) -> None:
         ...
 
     def start_logging_to_file(self, file_path: str) -> None:
@@ -65,11 +68,11 @@ class View(tk.Tk):
         self.frm_interactive.grid(row=0, column=0)
         self.frm_logging.grid(row=1, column=0)
 
-    def connect(self) -> None:
-        print("enable widgets stub")
-
-    def disconnect(self) -> None:
-        print("disable widgets stub")
+    def set_connection_status(self, status: str) -> None:
+        """
+        Set the widget status to indicate whether the serial connection is active
+        """
+        self.frm_interactive.set_connection_status(status)
 
     def set_output_pin_indicators(self, pin_states: dict[str, tuple[bool]]) -> None:
         self.frm_interactive.set_output_indicators(pin_states)
@@ -106,6 +109,9 @@ class Interactive_Frame(ttk.Frame):
         ttk.Separator(self, orient="vertical").grid(
             row=0, column=3, rowspan=grid_row.get(), sticky="NS"
         )
+
+    def set_connection_status(self, status: str) -> None:
+        self.pnl_ser_con.set_connection_status(status)
 
     def set_output_indicators(self, pin_states: dict[str, tuple[bool]]) -> None:
         self.pnl_mode.set_output_indicators(*pin_states["mode1"], grid_row=0)
@@ -241,12 +247,29 @@ class Serial_Connect_Panel(Interactive_Panel):
     def create_right_widgets(self, frame: ttk.Frame) -> None:
         ttk.Label(frame, text="Status:").grid(row=0, column=0, sticky="E")
 
-        lbl_status = ttk.Label(
+        self.lbl_status = ttk.Label(
             frame,
             text="Disconnected",
             foreground="red",
         )
-        lbl_status.grid(row=0, column=1, sticky="W")
+        self.lbl_status.grid(row=0, column=1, sticky="W")
+
+    def set_connection_status(self, status: str) -> None:
+        match status:
+            case "Connected":
+                self.lbl_status.configure(text=status, foreground="green")
+                self.btn_connect.configure(
+                    text="Disconnect",
+                    command=self.presenter.disconnect_from_serial_port,
+                )
+            case "Disconnected":
+                self.lbl_status.configure(text=status, foreground="red")
+                self.btn_connect.configure(
+                    text="Connect",
+                    command=lambda: self.presenter.connect_to_serial_port(
+                        self.com_port.get().upper()
+                    ),
+                )
 
 
 class Mode_Selection_Panel(Interactive_Panel):
