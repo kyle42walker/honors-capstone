@@ -9,6 +9,15 @@ logger = logging.getLogger("safety_io_logger")  # logger for all modules
 
 
 class Model(Protocol):
+    def detect_arduino_ports(self) -> list[str]:
+        ...
+
+    def connect_to_serial_port(self, port: str) -> bool:
+        ...
+
+    def disconnect_from_serial_port(self) -> None:
+        ...
+
     def read_output_pin_states(self) -> dict[str, tuple[bool]]:
         ...
 
@@ -36,10 +45,7 @@ class Model(Protocol):
     ) -> bool:
         ...
 
-    def detect_arduino_ports(self) -> list[str]:
-        ...
-
-    def connect_to_serial_port(self, port: str) -> bool:
+    def write_power(self) -> bool:
         ...
 
 
@@ -225,7 +231,14 @@ class Presenter:
             self.view.set_connection_status("Disconnected")
 
     def toggle_power(self) -> None:
-        logger.debug(f"power toggled")
+        """
+        Toggle the controller power
+        """
+        if self.model.write_power():
+            logger.debug(f"Power toggled")
+        else:
+            logger.error("Failed to communincate with serial device")
+            self.view.set_connection_status("Disconnected")
 
     def measure_heartbeat(self) -> None:
         logger.debug(f"heartbeat measured")

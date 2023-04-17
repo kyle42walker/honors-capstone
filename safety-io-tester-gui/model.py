@@ -67,7 +67,7 @@ class Model:
         """
         try:
             self.serial.write(data)
-            logger.info(f"Sent data: {data}")
+            logger.info(f"Sent data: '{data.decode()}'")
             return True
 
         except SerialException:
@@ -81,7 +81,7 @@ class Model:
             "estop": (True, False),
             "stop": (False, True),
             "interlock": (True, False),
-            "power": (True, False),
+            "power": (int(time.time()) % 2, int(time.time()) % 3),
             "heartbeat": (True, False),
             "teach": (True, False),
         }
@@ -273,6 +273,35 @@ class Model:
             interlock_bits = [str(int(interlock_a)), str(int(interlock_b))]
 
         data = bytearray([ord("I")] + [ord(b) for b in interlock_bits])
+        return self.write_data(data)
+
+    def write_power(self) -> bool:
+        """
+        Toggle the controller power state
+
+        Send data to the serial device in the following format:
+        Index   Data byte
+            0   P
+            1   (0|1) - Power
+
+        e.g. "P1" sets power ON, "P0" sets power OFF
+
+        Returns:
+            True if the data was sent successfully, False otherwise
+        """
+
+        # Get current power state
+        pin_states = self.read_output_pin_states()
+        power = pin_states["power"]
+
+        # If device is powered on, turn it off
+        if power[0] or power[1]:
+            data = bytearray([ord("P"), ord("0")])
+
+        # If device is powered off, turn it on
+        else:
+            data = bytearray([ord("P"), ord("1")])
+
         return self.write_data(data)
 
 
