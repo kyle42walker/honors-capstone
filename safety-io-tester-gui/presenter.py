@@ -18,16 +18,16 @@ class Model(Protocol):
     def disconnect_from_serial_port(self) -> None:
         ...
 
-    def read_output_pin_states(self) -> dict[str, tuple[bool]]:
+    def request_output_pin_states(self) -> dict[str, tuple[bool, bool]]:
         ...
 
-    def write_mode(self, mode: str) -> bool:
+    def set_mode(self, mode: str) -> bool:
         ...
 
-    def write_mode_bit(self, bit_id: str) -> bool:
+    def toggle_mode_bit(self, bit_id: str) -> bool:
         ...
 
-    def write_estop(
+    def set_estop(
         self,
         e_stop_a: bool,
         e_stop_b: bool,
@@ -36,7 +36,7 @@ class Model(Protocol):
     ) -> bool:
         ...
 
-    def write_interlock(
+    def set_interlock(
         self,
         interlock_a: bool,
         interlock_b: bool,
@@ -45,7 +45,10 @@ class Model(Protocol):
     ) -> bool:
         ...
 
-    def write_power(self) -> bool:
+    def toggle_power(self) -> bool:
+        ...
+
+    def request_heartbeat(self) -> tuple[int, int] | None:
         ...
 
 
@@ -53,10 +56,15 @@ class View(Protocol):
     def init_gui(self, presenter: Presenter) -> None:
         ...
 
+    def set_output_pin_indicators(
+        self, pin_states: dict[str, tuple[bool, bool]]
+    ) -> None:
+        ...
+
     def set_connection_status(self, status: str) -> None:
         ...
 
-    def set_output_pin_indicators(self, pin_states: dict[str, tuple[bool]]) -> None:
+    def set_hearbeat_values(self, heartbeat_hz: tuple[int, int]) -> None:
         ...
 
     def log(self, message: str) -> None:
@@ -97,7 +105,7 @@ class Presenter:
 
         This function is called every POLLING_RATE ms
         """
-        self.view.set_output_pin_indicators(self.model.read_output_pin_states())
+        self.view.set_output_pin_indicators(self.model.request_output_pin_states())
         self.view.after(POLLING_RATE, self.update_output_pin_indicators)
 
     def connect_to_serial_port(self, port: str) -> None:
@@ -136,17 +144,24 @@ class Presenter:
         logger.info("Disconnected from serial port")
         self.view.set_connection_status("Disconnected")
 
+    def failed_to_communicate(self) -> None:
+        """
+        Log a failed communication attempt
+        """
+        logger.error("Failed to communincate with serial device")
+        self.model.disconnect_from_serial_port()
+        self.view.set_connection_status("Disconnected")
+
     def set_mode(self, mode: str) -> None:
         """
         Set the mode of the controller
 
         mode: must be "Automatic", "Stop", "Manual", or "Mute"
         """
-        if self.model.write_mode(mode):
+        if self.model.set_mode(mode):
             logger.debug(f"Mode set to '{mode}'")
         else:
-            logger.error("Failed to communincate with serial device")
-            self.view.set_connection_status("Disconnected")
+            self.failed_to_communicate()
 
     def toggle_mode_bit(self, bit_id: str) -> None:
         """
@@ -154,11 +169,10 @@ class Presenter:
 
         bit_id: must be "A1", "A2", "B1", or "B2"
         """
-        if self.model.write_mode_bit(bit_id):
+        if self.model.toggle_mode_bit(bit_id):
             logger.debug(f"Mode bit '{bit_id}' toggled")
         else:
-            logger.error("Failed to communincate with serial device")
-            self.view.set_connection_status("Disconnected")
+            self.failed_to_communicate()
 
     def toggle_e_stop(self, trigger_state: int, delay_ms: str) -> None:
         """
@@ -167,33 +181,32 @@ class Presenter:
         trigger_state: must be "A and B", "A then B", "B then A", "A only", or "B only"
         delay_ms: delay between triggering A and B in milliseconds
         """
-        success = False
+        communication_successful = False
 
         match trigger_state:
             case "A and B":
-                if self.model.write_estop(True, True):
+                if self.model.set_estop(True, True):
                     logger.debug(f"E-stops A and B")
-                    success = True
+                    communication_successful = True
             case "A then B":
-                if self.model.write_estop(True, True, "A", int(delay_ms)):
+                if self.model.set_estop(True, True, "A", int(delay_ms)):
                     logger.debug(f"E-stop A then B, {delay_ms} ms delay")
-                    success = True
+                    communication_successful = True
             case "B then A":
-                if self.model.write_estop(True, True, "B", int(delay_ms)):
+                if self.model.set_estop(True, True, "B", int(delay_ms)):
                     logger.debug(f"E-stop B then A, {delay_ms} ms delay")
-                    success = True
+                    communication_successful = True
             case "A only":
-                if self.model.write_estop(True, False):
+                if self.model.set_estop(True, False):
                     logger.debug(f"E-stop A only")
-                    success = True
+                    communication_successful = True
             case "B only":
-                if self.model.write_estop(False, True):
+                if self.model.set_estop(False, True):
                     logger.debug(f"E-stop B only")
-                    success = True
+                    communication_successful = True
 
-        if not success:
-            logger.error("Failed to communincate with serial device")
-            self.view.set_connection_status("Disconnected")
+        if not communication_successful:
+            self.failed_to_communicate()
 
     def toggle_interlock(self, trigger_state: str, delay_ms: str) -> None:
         """
@@ -202,46 +215,51 @@ class Presenter:
         trigger_state: must be "A and B", "A then B", "B then A", "A only", or "B only"
         delay_ms: delay between triggering A and B in milliseconds
         """
-        success = False
+        communication_successful = False
 
         match trigger_state:
             case "A and B":
-                if self.model.write_interlock(True, True):
+                if self.model.set_interlock(True, True):
                     logger.debug(f"Interlocks A and B")
-                    success = True
+                    communication_successful = True
             case "A then B":
-                if self.model.write_interlock(True, True, "A", int(delay_ms)):
+                if self.model.set_interlock(True, True, "A", int(delay_ms)):
                     logger.debug(f"Interlock A then B, {delay_ms} ms delay")
-                    success = True
+                    communication_successful = True
             case "B then A":
-                if self.model.write_interlock(True, True, "B", int(delay_ms)):
+                if self.model.set_interlock(True, True, "B", int(delay_ms)):
                     logger.debug(f"Interlock B then A, {delay_ms} ms delay")
-                    success = True
+                    communication_successful = True
             case "A only":
-                if self.model.write_interlock(True, False):
+                if self.model.set_interlock(True, False):
                     logger.debug(f"Interlock A only")
-                    success = True
+                    communication_successful = True
             case "B only":
-                if self.model.write_interlock(False, True):
+                if self.model.set_interlock(False, True):
                     logger.debug(f"Interlock B only")
-                    success = True
+                    communication_successful = True
 
-        if not success:
-            logger.error("Failed to communincate with serial device")
-            self.view.set_connection_status("Disconnected")
+        if not communication_successful:
+            self.failed_to_communicate()
 
     def toggle_power(self) -> None:
         """
         Toggle the controller power
         """
-        if self.model.write_power():
+        if self.model.toggle_power():
             logger.debug(f"Power toggled")
         else:
-            logger.error("Failed to communincate with serial device")
-            self.view.set_connection_status("Disconnected")
+            self.failed_to_communicate()
 
     def measure_heartbeat(self) -> None:
-        logger.debug(f"heartbeat measured")
+        heartbeat_hz = self.model.request_heartbeat()
+        if heartbeat_hz:
+            logger.debug(
+                f"Heartbeat A: {heartbeat_hz[0]}, Heartbeat B: {heartbeat_hz[1]}"
+            )
+            self.view.set_heartbeat_values(heartbeat_hz)
+        else:
+            self.failed_to_communicate()
 
     def echo_string(self, message: str) -> None:
         logger.debug(f"echo: {message}")

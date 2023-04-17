@@ -68,14 +68,19 @@ class View(tk.Tk):
         self.frm_interactive.grid(row=0, column=0)
         self.frm_logging.grid(row=1, column=0)
 
+    def set_output_pin_indicators(
+        self, pin_states: dict[str, tuple[bool, bool]]
+    ) -> None:
+        self.frm_interactive.set_output_indicators(pin_states)
+
     def set_connection_status(self, status: str) -> None:
         """
         Set the widget status to indicate whether the serial connection is active
         """
         self.frm_interactive.set_connection_status(status)
 
-    def set_output_pin_indicators(self, pin_states: dict[str, tuple[bool]]) -> None:
-        self.frm_interactive.set_output_indicators(pin_states)
+    def set_heartbeat_values(self, heartbeat_hz: tuple[int, int]) -> None:
+        self.frm_interactive.set_heartbeat_values(heartbeat_hz)
 
     def log(self, message: str) -> None:
         self.frm_logging.log_to_text_box(message)
@@ -110,10 +115,7 @@ class Interactive_Frame(ttk.Frame):
             row=0, column=3, rowspan=grid_row.get(), sticky="NS"
         )
 
-    def set_connection_status(self, status: str) -> None:
-        self.pnl_ser_con.set_connection_status(status)
-
-    def set_output_indicators(self, pin_states: dict[str, tuple[bool]]) -> None:
+    def set_output_indicators(self, pin_states: dict[str, tuple[bool, bool]]) -> None:
         self.pnl_mode.set_output_indicators(*pin_states["mode1"], grid_row=0)
         self.pnl_mode.set_output_indicators(*pin_states["mode2"], grid_row=1)
         self.pnl_estop.set_output_indicators(*pin_states["estop"], grid_row=0)
@@ -122,6 +124,12 @@ class Interactive_Frame(ttk.Frame):
         self.pnl_power.set_output_indicators(*pin_states["power"])
         self.pnl_heartbeat.set_output_indicators(*pin_states["heartbeat"])
         self.pnl_echo_str.set_output_indicators(*pin_states["teach"])
+
+    def set_connection_status(self, status: str) -> None:
+        self.pnl_ser_con.set_connection_status(status)
+
+    def set_heartbeat_values(self, heartbeat_hz: tuple[int, int]) -> None:
+        self.pnl_heartbeat.set_heartbeat_values(heartbeat_hz)
 
 
 class Interactive_Panel(ABC):
@@ -671,16 +679,24 @@ class Heartbeat_Panel(Interactive_Panel):
 
     def create_center_widgets(self, frame: ttk.Frame) -> None:
         ttk.Label(frame, text="Channel A: ").grid(row=0, column=0)
-        self.heart_beat_a = ttk.Label(frame, text="NA", relief="solid", borderwidth=1)
+        self.heart_beat_a = ttk.Label(
+            frame, text="N/A", relief="solid", borderwidth=1, width=5, anchor="e"
+        )
         self.heart_beat_a.grid(row=0, column=1)
         ttk.Label(frame, text="Hz").grid(row=0, column=2)
         ttk.Label(frame, text="Channel B: ").grid(row=1, column=0)
-        self.heart_beat_b = ttk.Label(frame, text="NA", relief="solid", borderwidth=1)
+        self.heart_beat_b = ttk.Label(
+            frame, text="N/A", relief="solid", borderwidth=1, width=5, anchor="e"
+        )
         self.heart_beat_b.grid(row=1, column=1)
         ttk.Label(frame, text="Hz").grid(row=1, column=2)
 
     def create_right_widgets(self, frame: ttk.Frame) -> None:
         self.add_output_pin_pair(frame, "Heartbeat A", "Heartbeat B")
+
+    def set_heartbeat_values(self, heartbeat_hz: tuple[int, int]):
+        self.heart_beat_a["text"] = heartbeat_hz[0]
+        self.heart_beat_b["text"] = heartbeat_hz[1]
 
 
 class Echo_String_Panel(Interactive_Panel):
@@ -731,7 +747,7 @@ class Logging_Frame(ttk.Frame):
         super().__init__(parent, **kwargs)
         self.presenter = presenter
         self.button_size = parent.button_size
-        self.text_box_size = (82, 10)
+        self.text_box_size = (80, 10)
 
         self.create_widgets()
 

@@ -1,8 +1,8 @@
 import serial
-from serial import SerialException
+from serial import SerialException, SerialTimeoutException
 import serial.tools.list_ports
-
 import logging
+import sys
 
 logger = logging.getLogger("safety_io_logger")  # logger for all modules
 
@@ -17,6 +17,8 @@ class Model:
         self.serial = MockSerialPort()  # for testing without Arduino
         # self.serial = serial.Serial()
         self.serial.baudrate = BAUD_RATE
+        self.serial.timeout = 1  # timeout for read operations (in seconds)
+        self.serial.write_timeout = 1  # timeout for write operations (in seconds)
 
     def detect_arduino_ports(self) -> list[str]:
         """
@@ -47,13 +49,15 @@ class Model:
             self.serial.open()
             return True
         except SerialException:
-            self.serial.close()
+            self.disconnect_from_serial_port()
             return False
 
     def disconnect_from_serial_port(self) -> None:
         """
         Disconnect from the serial device
         """
+        self.serial.reset_input_buffer()
+        self.serial.reset_output_buffer()
         self.serial.close()
 
     def write_data(self, data: bytes) -> bool:
@@ -68,13 +72,31 @@ class Model:
         try:
             self.serial.write(data)
             logger.info(f"Sent data: '{data.decode()}'")
-            return True
-
-        except SerialException:
-            self.serial.close()
+            if self.read_response_OK():
+                return True
+            logger.warning("Did not recieve 'OK' response from Safety IO Tester")
+            self.disconnect_from_serial_port()
             return False
 
-    def read_output_pin_states(self) -> dict[str, tuple[bool]]:
+        except (SerialException, SerialTimeoutException):
+            self.disconnect_from_serial_port()
+            return False
+
+    def read_response_OK(self) -> bool:
+        """
+        Read the response from the serial device
+
+        Returns:
+            True if the response was "OK", False otherwise
+
+        Raises:
+            SerialException: if there is an error reading from the serial device
+        """
+        response = self.serial.read(3).decode().strip()
+        logger.info(f"Response: '{response}'")
+        return response == "OK"
+
+    def request_output_pin_states(self) -> dict[str, tuple[bool, bool]]:
         return {
             "mode1": (int(time.time()) % 2, False),
             "mode2": (False, True),
@@ -86,7 +108,7 @@ class Model:
             "teach": (True, False),
         }
 
-    def write_mode(self, mode_str: str) -> bool:
+    def set_mode(self, mode_str: str) -> bool:
         """
         Set the mode of the controller
 
@@ -120,7 +142,7 @@ class Model:
         data = bytearray([ord("M")] + [ord(b) for b in mode_bits])
         return self.write_data(data)
 
-    def write_mode_bit(self, mode_bit: str) -> bool:
+    def toggle_mode_bit(self, mode_bit: str) -> bool:
         """
         Toggle the specified mode bit.
         Values for nontoggled bits are read from the controller.
@@ -141,7 +163,7 @@ class Model:
             True if the data was sent successfully, False otherwise
         """
         # Get current mode bits
-        pin_states = self.read_output_pin_states()
+        pin_states = self.request_output_pin_states()
         mode_ab1, mode_ab2 = [pin_states[key] for key in ["mode1", "mode2"]]
         mode_bits = [
             str(int(mode_ab1[0])),  # A1
@@ -165,7 +187,7 @@ class Model:
         data = bytearray([ord("M")] + [ord(b) for b in mode_bits])
         return self.write_data(data)
 
-    def write_estop(
+    def set_estop(
         self,
         e_stop_a: bool,
         e_stop_b: bool,
@@ -220,7 +242,7 @@ class Model:
         data = bytearray([ord("E")] + [ord(b) for b in e_stop_bits])
         return self.write_data(data)
 
-    def write_interlock(
+    def set_interlock(
         self,
         interlock_a: bool,
         interlock_b: bool,
@@ -275,7 +297,7 @@ class Model:
         data = bytearray([ord("I")] + [ord(b) for b in interlock_bits])
         return self.write_data(data)
 
-    def write_power(self) -> bool:
+    def toggle_power(self) -> bool:
         """
         Toggle the controller power state
 
@@ -291,7 +313,7 @@ class Model:
         """
 
         # Get current power state
-        pin_states = self.read_output_pin_states()
+        pin_states = self.request_output_pin_states()
         power = pin_states["power"]
 
         # If device is powered on, turn it off
@@ -303,6 +325,55 @@ class Model:
             data = bytearray([ord("P"), ord("1")])
 
         return self.write_data(data)
+
+    def request_heartbeat(self) -> tuple[int, int] | None:
+        """
+        Request heartbeat in Hz from the controller
+
+        Send data to the serial device in the following format:
+        Index   Data byte
+            0   H
+
+        Receive data to the serial device in the following format:
+        Index   Data byte
+            0   A
+            1   X
+            2   X
+            3   X
+            4   X
+            5   X
+            6   B
+            7   X
+            8   X
+            9   X
+            10  X
+            11  X
+            12  \n
+
+        e.g. "H" requesets the heartbeat and a response of "A00100B01234" indicates
+        the heartbeat on channel A is 100 Hz and the heartbeat on channel B is 1234 Hz
+
+        Returns:
+            The heartbeat in Hz as a tuple of (heartbeat A, heartbeat B)
+            or None if the request failed
+        """
+        heartbeat_hz = None
+        try:
+            self.serial.write(b"H")
+            logger.info(f"Sent data: 'H'")
+            self.serial.reset_input_buffer()
+            data = self.serial.read(13).decode().strip()
+            logger.info(f"Response: '{data}'")
+        except SerialException:
+            return None
+
+        if data[0] == "A" and data[6] == "B":
+            try:
+                heartbeat_hz = (int(data[1:6]), int(data[7:12]))
+            except ValueError:
+                return None
+
+        return heartbeat_hz
 
 
 class MockSerialPort:
@@ -340,10 +411,41 @@ class MockSerialPort:
         if not self.is_open:
             raise SerialException("Mock serial port is not open")
 
-        import sys
-
         sys.stdout.write(str(data) + "\n")
         sys.stdout.flush()
+
+    def read(self, size: int = 1) -> bytes:
+        """
+        Read data from stdin instead of from a serial port
+
+        size: number of bytes to read from stdin
+
+        Returns:
+            bytes read from stdin
+
+        Raises:
+            SerialException if the mock serial port is not open
+        """
+        if not self.is_open:
+            raise SerialException("Mock serial port is not open")
+
+        return sys.stdin.read(size).encode()
+
+    def reset_input_buffer(self):
+        """
+        Reset the mock serial port's input buffer
+
+        For this mock serial port, this method does nothing
+        """
+        pass
+
+    def reset_output_buffer(self):
+        """
+        Reset the mock serial port's output buffer
+
+        For this mock serial port, this method does nothing
+        """
+        pass
 
 
 """
@@ -466,7 +568,18 @@ Send (read heartbeat):
     0   H
 
 Receive:
-    int number of hz
-    \n
+    0   A
+    1   X
+    2   X
+    3   X
+    4   X
+    5   X
+    6   B
+    7   X
+    8   X
+    9   X
+    10  X
+    11  X
+    12  \n
 
 """
