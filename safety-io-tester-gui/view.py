@@ -416,37 +416,38 @@ class Emergency_Stop_Panel(Interactive_Panel):
             height=self.button_size[1],
             font=("TKDefaultFont", FONT_SIZE, "bold"),
             command=lambda: self.presenter.toggle_e_stop(
-                self.dual_channel_trigger_states.index(
-                    self.e_stop_trigger_selection.get()
-                ),
+                [  # Get the trigger state key from the value in the dict
+                    trig_state_key
+                    for trig_state_key, trig_state_val in self.trigger_states.items()
+                    if trig_state_val == self.e_stop_trigger_selection.get()
+                ][0],
                 self.e_stop_delay_ms.get(),
             ),
         )
         btn_e_stop.grid(row=1, column=0, sticky="W")
 
     def create_center_widgets(self, frame: ttk.Frame) -> None:
-        # NOTE: The order of this list is important.
-        # The presenter and other functions in this class depend on this order
-        self.dual_channel_trigger_states = [
-            "A and B on simultaneously",
-            "A on after B by [Delay] ms",
-            "B on after A by [Delay] ms",
-            "A on and B off",
-            "B on and A off",
-        ]
+        # E-Stop dual channel trigger selection
+        self.trigger_states = {
+            "A and B": "A and B ON simultaneously",
+            "A then B": "B ON after A by [Delay] ms",
+            "B then A": "A ON after B by [Delay] ms",
+            "A only": "A ON and B OFF",
+            "B only": "B ON and A OFF",
+        }
         self.e_stop_trigger_selection = tk.StringVar(frame)
-
-        opt_e_stop_dropdown = ttk.OptionMenu(
+        self.e_stop_trigger_selection.set(self.trigger_states["A and B"])
+        opt_e_stop_dropdown = ttk.Combobox(
             frame,
-            self.e_stop_trigger_selection,
-            self.dual_channel_trigger_states[0],
-            *self.dual_channel_trigger_states,
-            command=self.toggle_delay_entry_state,
+            textvariable=self.e_stop_trigger_selection,
+            values=[*self.trigger_states.values()],
+            state="readonly",
+            width=23,
         )
-        opt_e_stop_dropdown["menu"].configure(font=("TKDefaultFont", FONT_SIZE))
-        opt_e_stop_dropdown.config(width=25)
+        opt_e_stop_dropdown.bind("<<ComboboxSelected>>", self.toggle_delay_entry_state)
         opt_e_stop_dropdown.grid(row=0, column=0, columnspan=3)
 
+        # E-Stop triggering delay entry
         self.e_stop_delay_ms = tk.StringVar(frame, "")
 
         ttk.Label(frame, text="Delay: ").grid(row=1, column=0, sticky="E")
@@ -470,19 +471,23 @@ class Emergency_Stop_Panel(Interactive_Panel):
         self.add_output_pin_pair(frame, "E-Stop A", "E-Stop B", 0)
         self.add_output_pin_pair(frame, "Stop A", "Stop B", 1)
 
-    def toggle_delay_entry_state(self, trigger_selection: str) -> None:
+    def toggle_delay_entry_state(self, event: tk.Event) -> None:
         if (
-            trigger_selection == self.dual_channel_trigger_states[1]
-            or trigger_selection == self.dual_channel_trigger_states[2]
+            self.e_stop_trigger_selection.get() == self.trigger_states["A then B"]
+            or self.e_stop_trigger_selection.get() == self.trigger_states["B then A"]
         ):
-            self.e_stop_delay_ms.set("0")
+            # Enable delay entry
             self.ent_e_stop_delay["state"] = tk.NORMAL
+            # Set initial value to 0, select text with cursor at the end, and focus
+            self.e_stop_delay_ms.set("0")
             self.ent_e_stop_delay.selection_range(0, tk.END)
             self.ent_e_stop_delay.icursor("end")
             self.ent_e_stop_delay.focus_set()
+
         else:
-            self.e_stop_delay_ms.set("")
+            # Disable delay entry and clear value
             self.ent_e_stop_delay["state"] = tk.DISABLED
+            self.e_stop_delay_ms.set("")
 
     def validate_delay_entry(self, value: str) -> None:
         if value:
@@ -516,37 +521,40 @@ class Interlock_Panel(Interactive_Panel):
             height=self.button_size[1],
             font=("TKDefaultFont", FONT_SIZE, "bold"),
             command=lambda: self.presenter.toggle_interlock(
-                self.dual_channel_trigger_states.index(
-                    self.interlock_trigger_selection.get()
-                ),
+                [  # Get the trigger state key from the value in the dict
+                    trig_state_key
+                    for trig_state_key, trig_state_val in self.trigger_states.items()
+                    if trig_state_val == self.interlock_trigger_selection.get()
+                ][0],
                 self.interlock_delay_ms.get(),
             ),
         )
         btn_interlock.grid(row=1, column=0, sticky="W")
 
     def create_center_widgets(self, frame: ttk.Frame) -> None:
-        # NOTE: The order of this list is important.
-        # The presenter and other functions in this class depend on this order
-        self.dual_channel_trigger_states = [
-            "A and B on simultaneously",
-            "A on after B by [Delay] ms",
-            "B on after A by [Delay] ms",
-            "A on and B off",
-            "B on and A off",
-        ]
+        # Interlock dual channel trigger selection
+        self.trigger_states = {
+            "A and B": "A and B ON simultaneously",
+            "A then B": "B ON after A by [Delay] ms",
+            "B then A": "A ON after B by [Delay] ms",
+            "A only": "A ON and B OFF",
+            "B only": "B ON and A OFF",
+        }
         self.interlock_trigger_selection = tk.StringVar(frame)
-
-        opt_interlock_dropdown = ttk.OptionMenu(
+        self.interlock_trigger_selection.set(self.trigger_states["A and B"])
+        opt_interlock_dropdown = ttk.Combobox(
             frame,
-            self.interlock_trigger_selection,
-            self.dual_channel_trigger_states[0],
-            *self.dual_channel_trigger_states,
-            command=self.toggle_delay_entry_state,
+            textvariable=self.interlock_trigger_selection,
+            values=[*self.trigger_states.values()],
+            state="readonly",
+            width=23,
         )
-        opt_interlock_dropdown["menu"].configure(font=("TKDefaultFont", FONT_SIZE))
-        opt_interlock_dropdown.config(width=25)
+        opt_interlock_dropdown.bind(
+            "<<ComboboxSelected>>", self.toggle_delay_entry_state
+        )
         opt_interlock_dropdown.grid(row=0, column=0, columnspan=3)
 
+        # Interlock triggering delay entry
         self.interlock_delay_ms = tk.StringVar(frame, "")
 
         ttk.Label(frame, text="Delay: ").grid(row=1, column=0, sticky="E")
@@ -569,19 +577,23 @@ class Interlock_Panel(Interactive_Panel):
     def create_right_widgets(self, frame: ttk.Frame) -> None:
         self.add_output_pin_pair(frame, "Interlock A", "Interlock B")
 
-    def toggle_delay_entry_state(self, trigger_selection: str) -> None:
+    def toggle_delay_entry_state(self, event: tk.Event) -> None:
         if (
-            trigger_selection == self.dual_channel_trigger_states[1]
-            or trigger_selection == self.dual_channel_trigger_states[2]
+            self.interlock_trigger_selection.get() == self.trigger_states["A then B"]
+            or self.interlock_trigger_selection.get() == self.trigger_states["B then A"]
         ):
-            self.interlock_delay_ms.set("0")
+            # Enable delay entry
             self.ent_interlock_delay["state"] = tk.NORMAL
+            # Set initial value to 0, select text with cursor at the end, and focus
+            self.interlock_delay_ms.set("0")
             self.ent_interlock_delay.selection_range(0, tk.END)
             self.ent_interlock_delay.icursor("end")
             self.ent_interlock_delay.focus_set()
+
         else:
-            self.interlock_delay_ms.set("")
+            # Disable delay entry and clear value
             self.ent_interlock_delay["state"] = tk.DISABLED
+            self.interlock_delay_ms.set("")
 
     def validate_delay_entry(self, value: str) -> None:
         if value:

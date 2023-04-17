@@ -136,30 +136,30 @@ class Presenter:
             logger.error("Failed to communincate with serial device")
             self.view.set_connection_status("Disconnected")
 
-    def toggle_e_stop(self, trigger_selection_index: int, delay_ms: str) -> None:
-        match (trigger_selection_index):
-            case 0:
+    def toggle_e_stop(self, trigger_state: int, delay_ms: str) -> None:
+        match trigger_state:
+            case "A and B":
                 logger.debug(f"both e_stops triggered")
-            case 1:
+            case "A then B":
                 logger.debug(f"e_stop a then b, {delay_ms} ms delay")
-            case 2:
+            case "B then A":
                 logger.debug(f"e_stop b then a, {delay_ms} ms delay")
-            case 3:
+            case "A only":
                 logger.debug(f"e_stop a only")
-            case 4:
+            case "B only":
                 logger.debug(f"e_stop b only")
 
-    def toggle_interlock(self, trigger_selection_index: int, delay_ms: str) -> None:
-        match (trigger_selection_index):
-            case 0:
-                logger.debug(f"both interlocks triggered")
-            case 1:
+    def toggle_interlock(self, trigger_state: str, delay_ms: str) -> None:
+        match trigger_state:
+            case "A and B":
+                logger.debug(f"both interlock triggered")
+            case "A then B":
                 logger.debug(f"interlock a then b, {delay_ms} ms delay")
-            case 2:
+            case "B then A":
                 logger.debug(f"interlock b then a, {delay_ms} ms delay")
-            case 3:
+            case "A only":
                 logger.debug(f"interlock a only")
-            case 4:
+            case "B only":
                 logger.debug(f"interlock b only")
 
     def toggle_power(self) -> None:
