@@ -97,6 +97,7 @@ class Model:
             2   (0|1) - Mode A2
             3   (0|1) - Mode B1
             4   (0|1) - Mode B2
+
         e.g. "M1001" sets bits A1 and B2, setting the controller to "Manual" mode
 
         mode_str: must be one of ["Automatic", "Stop", "Manual", "Mute"]
@@ -131,6 +132,7 @@ class Model:
             2   (0|1) - Mode A2
             3   (0|1) - Mode B1
             4   (0|1) - Mode B2
+
         e.g. "M1001" sets bits A1 and B2, setting the controller to "Manual" mode
 
         mode_bit: must be one of ["A1", "A2", "B1", "B2"]
@@ -161,6 +163,116 @@ class Model:
 
         # Send mode bits to the serial device
         data = bytearray([ord("M")] + [ord(b) for b in mode_bits])
+        return self.write_data(data)
+
+    def write_estop(
+        self,
+        e_stop_a: bool,
+        e_stop_b: bool,
+        first_channel: str = "",
+        delay_ms: int = 0,
+    ) -> bool:
+        """
+        Set the emergency stop pin states
+
+        Send data to the serial device in the following format:
+        Index   Data byte
+            0   E
+            1   (0|1) - E-stop A
+            2   (0|1) - E-stop B
+
+            Optional 5-digit delay in milliseconds
+            3   (A|B) - Which e-stop channel to set first before the delay
+            4   (0-9) - X
+            5   (0-9) - X
+            6   (0-9) - X
+            7   (0-9) - X
+            8   (0-9) - X
+
+        e.g. "E10" sets e-stop A ON and B OFF simultaneously,
+        "E11B00100" sets e-stop A 100 ms after e-stop B
+
+        e_stop_a: True to set e-stop A, False to clear e-stop A
+        e_stop_b: True to set e-stop B, False to clear e-stop B
+        first_channel: which e-stop to set first before the delay ("A" or "B")
+        delay_ms: delay in milliseconds between setting channels A and B
+
+        Returns:
+            True if the data was sent successfully, False otherwise
+        """
+        # If a delay is specified
+        if first_channel == "A" or first_channel == "B":
+            e_stop_bits = [
+                str(int(e_stop_a)),
+                str(int(e_stop_b)),
+                first_channel,
+                str(delay_ms // 10000 % 10),
+                str(delay_ms // 1000 % 10),
+                str(delay_ms // 100 % 10),
+                str(delay_ms // 10 % 10),
+                str(delay_ms % 10),
+            ]
+
+        # If no delay is specified
+        else:
+            e_stop_bits = [str(int(e_stop_a)), str(int(e_stop_b))]
+
+        data = bytearray([ord("E")] + [ord(b) for b in e_stop_bits])
+        return self.write_data(data)
+
+    def write_interlock(
+        self,
+        interlock_a: bool,
+        interlock_b: bool,
+        first_channel: str = "",
+        delay_ms: int = 0,
+    ) -> bool:
+        """
+        Set the interlock pin states
+
+        Send data to the serial device in the following format:
+        Index   Data byte
+            0   I
+            1   (0|1) - Interlock A
+            2   (0|1) - Interlock B
+
+            Optional 5-digit delay in milliseconds
+            3   (A|B) - Which interlock channel to set first before the delay
+            4   (0-9) - X
+            5   (0-9) - X
+            6   (0-9) - X
+            7   (0-9) - X
+            8   (0-9) - X
+
+        e.g. "E10" sets interlock A ON and B OFF simultaneously,
+        "E11B00100" sets interlock A 100 ms after interlock B
+
+        interlock_a: True to set interlock A, False to clear interlock A
+        interlock_b: True to set interlock B, False to clear interlock B
+        first_channel: which interlock to set first before the delay ("A" or "B")
+        delay_ms: delay in milliseconds between setting channels A and B
+
+        Returns:
+            True if the data was sent successfully, False otherwise
+        """
+        # If a delay is specified
+        if first_channel == "A" or first_channel == "B":
+            interlock_bits = [
+                str(int(interlock_a)),
+                str(int(interlock_b)),
+                first_channel,
+                str(delay_ms // 10000 % 10),
+                str(delay_ms // 1000 % 10),
+                str(delay_ms // 100 % 10),
+                str(delay_ms // 10 % 10),
+                str(delay_ms % 10),
+            ]
+
+        # If no delay is specified
+        else:
+            interlock_bits = [str(int(interlock_a)), str(int(interlock_b))]
+
+        data = bytearray([ord("I")] + [ord(b) for b in interlock_bits])
         return self.write_data(data)
 
 
@@ -257,11 +369,23 @@ Send (set e-stop):
     0   E
     1   E-Stop A
     2   E-Stop B
+    3   A|B
+    4   X
+    5   X
+    6   X
+    7   X
+    8   X
 
 Send (set interlock):
     0   I
     1   Interlock A
     2   Interlock B
+    3   A|B
+    4   X
+    5   X
+    6   X
+    7   X
+    8   X
 
 Send (set power):
     0   P

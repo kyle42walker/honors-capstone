@@ -24,10 +24,10 @@ class Presenter(Protocol):
     def toggle_mode_bit(self, bit_id: str) -> None:
         ...
 
-    def toggle_e_stop(self, trigger_selection_index: int, delay_ms: str) -> None:
+    def toggle_e_stop(self, trigger_state: str, delay_ms: str) -> None:
         ...
 
-    def toggle_interlock(self, trigger_selection_index: int, delay_ms: str) -> None:
+    def toggle_interlock(self, trigger_state: str, delay_ms: str) -> None:
         ...
 
     def toggle_power(self) -> None:
@@ -490,9 +490,12 @@ class Emergency_Stop_Panel(Interactive_Panel):
             self.e_stop_delay_ms.set("")
 
     def validate_delay_entry(self, value: str) -> None:
+        # Validate delay entry value is an integer between 0 and 99999
         if value:
             try:
-                int(value)
+                val = int(value)
+                if val < 0 or val > 99999:
+                    return False
                 return True
             except ValueError:
                 return False
@@ -596,9 +599,12 @@ class Interlock_Panel(Interactive_Panel):
             self.interlock_delay_ms.set("")
 
     def validate_delay_entry(self, value: str) -> None:
+        # Validate delay entry value is an integer between 0 and 99999
         if value:
             try:
-                int(value)
+                val = int(value)
+                if val < 0 or val > 99999:
+                    return False
                 return True
             except ValueError:
                 return False

@@ -18,6 +18,24 @@ class Model(Protocol):
     def write_mode_bit(self, bit_id: str) -> bool:
         ...
 
+    def write_estop(
+        self,
+        e_stop_a: bool,
+        e_stop_b: bool,
+        first_channel: str = "",
+        delay_ms: int = 0,
+    ) -> bool:
+        ...
+
+    def write_interlock(
+        self,
+        interlock_a: bool,
+        interlock_b: bool,
+        first_channel: str = "",
+        delay_ms: int = 0,
+    ) -> bool:
+        ...
+
     def detect_arduino_ports(self) -> list[str]:
         ...
 
@@ -137,30 +155,74 @@ class Presenter:
             self.view.set_connection_status("Disconnected")
 
     def toggle_e_stop(self, trigger_state: int, delay_ms: str) -> None:
+        """
+        Toggle the e-stop bits of the controller
+
+        trigger_state: must be "A and B", "A then B", "B then A", "A only", or "B only"
+        delay_ms: delay between triggering A and B in milliseconds
+        """
+        success = False
+
         match trigger_state:
             case "A and B":
-                logger.debug(f"both e_stops triggered")
+                if self.model.write_estop(True, True):
+                    logger.debug(f"E-stops A and B")
+                    success = True
             case "A then B":
-                logger.debug(f"e_stop a then b, {delay_ms} ms delay")
+                if self.model.write_estop(True, True, "A", int(delay_ms)):
+                    logger.debug(f"E-stop A then B, {delay_ms} ms delay")
+                    success = True
             case "B then A":
-                logger.debug(f"e_stop b then a, {delay_ms} ms delay")
+                if self.model.write_estop(True, True, "B", int(delay_ms)):
+                    logger.debug(f"E-stop B then A, {delay_ms} ms delay")
+                    success = True
             case "A only":
-                logger.debug(f"e_stop a only")
+                if self.model.write_estop(True, False):
+                    logger.debug(f"E-stop A only")
+                    success = True
             case "B only":
-                logger.debug(f"e_stop b only")
+                if self.model.write_estop(False, True):
+                    logger.debug(f"E-stop B only")
+                    success = True
+
+        if not success:
+            logger.error("Failed to communincate with serial device")
+            self.view.set_connection_status("Disconnected")
 
     def toggle_interlock(self, trigger_state: str, delay_ms: str) -> None:
+        """
+        Toggle the interlock bits of the controller
+
+        trigger_state: must be "A and B", "A then B", "B then A", "A only", or "B only"
+        delay_ms: delay between triggering A and B in milliseconds
+        """
+        success = False
+
         match trigger_state:
             case "A and B":
-                logger.debug(f"both interlock triggered")
+                if self.model.write_interlock(True, True):
+                    logger.debug(f"Interlocks A and B")
+                    success = True
             case "A then B":
-                logger.debug(f"interlock a then b, {delay_ms} ms delay")
+                if self.model.write_interlock(True, True, "A", int(delay_ms)):
+                    logger.debug(f"Interlock A then B, {delay_ms} ms delay")
+                    success = True
             case "B then A":
-                logger.debug(f"interlock b then a, {delay_ms} ms delay")
+                if self.model.write_interlock(True, True, "B", int(delay_ms)):
+                    logger.debug(f"Interlock B then A, {delay_ms} ms delay")
+                    success = True
             case "A only":
-                logger.debug(f"interlock a only")
+                if self.model.write_interlock(True, False):
+                    logger.debug(f"Interlock A only")
+                    success = True
             case "B only":
-                logger.debug(f"interlock b only")
+                if self.model.write_interlock(False, True):
+                    logger.debug(f"Interlock B only")
+                    success = True
+
+        if not success:
+            logger.error("Failed to communincate with serial device")
+            self.view.set_connection_status("Disconnected")
 
     def toggle_power(self) -> None:
         logger.debug(f"power toggled")
