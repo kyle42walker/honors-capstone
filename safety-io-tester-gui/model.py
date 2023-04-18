@@ -4,12 +4,8 @@ import serial.tools.list_ports
 import logging
 import sys
 
+BAUD_RATE = 115200  # baud rate for serial communication
 logger = logging.getLogger("safety_io_logger")  # logger for all modules
-
-
-BAUD_RATE = 115200
-
-import time
 
 
 class Model:
@@ -19,6 +15,8 @@ class Model:
         self.serial.baudrate = BAUD_RATE
         self.serial.timeout = 1  # timeout for read operations (in seconds)
         self.serial.write_timeout = 1  # timeout for write operations (in seconds)
+
+        self.output_pins_states = {}
 
     def detect_arduino_ports(self) -> list[str]:
         """
@@ -56,8 +54,6 @@ class Model:
         """
         Disconnect from the serial device
         """
-        self.serial.reset_input_buffer()
-        self.serial.reset_output_buffer()
         self.serial.close()
 
     def write_data(self, data: bytes) -> bool:
@@ -71,7 +67,7 @@ class Model:
         """
         try:
             self.serial.write(data)
-            logger.info(f"Sent data: '{data.decode()}'")
+            logger.info(f"Sent data: '{data.decode().strip()}'")
             if self.read_response_OK():
                 return True
             logger.warning("Did not recieve 'OK' response from Safety IO Tester")
@@ -97,16 +93,74 @@ class Model:
         return response == "OK"
 
     def request_output_pin_states(self) -> dict[str, tuple[bool, bool]]:
-        return {
-            "mode1": (int(time.time()) % 2, False),
-            "mode2": (False, True),
-            "estop": (True, False),
-            "stop": (False, True),
-            "interlock": (True, False),
-            "power": (int(time.time()) % 2, int(time.time()) % 3),
-            "heartbeat": (True, False),
-            "teach": (True, False),
+        """
+        Request the output pin states from the controller
+
+        Send data to the serial device in the following format:
+        Index   Data byte
+            0   R
+
+        Receive data from the serial device in the following format:
+        Index   Data byte
+            0   A
+            1   (0|1) - Mode A1
+            2   (0|1) - Mode A2
+            3   (0|1) - E-Stop A
+            4   (0|1) - Interlock A
+            5   (0|1) - Stop A
+            6   (0|1) - Teach Mode A
+            7   (0|1) - Heartbeat A
+            8   (0|1) - Power A
+            9   B
+            10  (0|1) - Mode B1
+            11  (0|1) - Mode B2
+            12  (0|1) - E-Stop B
+            13  (0|1) - Interlock B
+            14  (0|1) - Stop B
+            15  (0|1) - Teach Mode B
+            16  (0|1) - Heartbeat B
+            17  (0|1) - Power B
+            18  \n
+
+        e.g. "R" requests the output pin states and a response of "A10000010B01000010\n"
+        indicates Mode A1, Heartbeat A, Mode B2, and Heartbeat B are set
+        and all other pins are cleared
+
+        Returns:
+            Dictionary of dual channel pin names to a tuple of pin states (A, B)
+            or an empty dictionary if there was an error
+        """
+        try:
+            # Send request and get response
+            self.serial.write(b"R")
+            response = self.serial.read(19).decode().strip()
+
+        except (SerialException, SerialTimeoutException):
+            self.disconnect_from_serial_port()
+            return {}
+
+        # Invalid response syntax
+        if response[0] != "A" or response[9] != "B":
+            return {}
+
+        # Parse response
+        logger.debug(f"Response: '{response}'")
+        pin_states = {
+            "mode1": (response[1] == "1", response[10] == "1"),
+            "mode2": (response[2] == "1", response[11] == "1"),
+            "estop": (response[3] == "1", response[12] == "1"),
+            "interlock": (response[4] == "1", response[13] == "1"),
+            "stop": (response[5] == "1", response[14] == "1"),
+            "teach": (response[6] == "1", response[15] == "1"),
+            "heartbeat": (response[7] == "1", response[16] == "1"),
+            "power": (response[8] == "1", response[17] == "1"),
         }
+
+        # Only log if the pin states have changed
+        if self.output_pins_states != pin_states:
+            logger.info(f"Output pin states changed to: {response}")
+            self.output_pins_states = pin_states
+        return pin_states
 
     def set_mode(self, mode_str: str) -> bool:
         """
@@ -163,8 +217,7 @@ class Model:
             True if the data was sent successfully, False otherwise
         """
         # Get current mode bits
-        pin_states = self.request_output_pin_states()
-        mode_ab1, mode_ab2 = [pin_states[key] for key in ["mode1", "mode2"]]
+        mode_ab1, mode_ab2 = [self.output_pin_states[key] for key in ["mode1", "mode2"]]
         mode_bits = [
             str(int(mode_ab1[0])),  # A1
             str(int(mode_ab2[0])),  # A2
@@ -313,8 +366,7 @@ class Model:
         """
 
         # Get current power state
-        pin_states = self.request_output_pin_states()
-        power = pin_states["power"]
+        power = self.output_pins_states["power"]
 
         # If device is powered on, turn it off
         if power[0] or power[1]:
@@ -361,7 +413,6 @@ class Model:
         try:
             self.serial.write(b"H")
             logger.info(f"Sent data: 'H'")
-            self.serial.reset_input_buffer()
             data = self.serial.read(13).decode().strip()
             logger.info(f"Response: '{data}'")
         except SerialException:
@@ -395,7 +446,7 @@ class Model:
         Returns:
             True if the data was sent successfully, False otherwise
         """
-        data = bytearray([ord("S")] + [ord(c) for c in echo_string])
+        data = bytearray([ord("S")] + [ord(c) for c in echo_string] + [ord("\n")])
         return self.write_data(data)
 
 
@@ -453,164 +504,3 @@ class MockSerialPort:
             raise SerialException("Mock serial port is not open")
 
         return sys.stdin.read(size).encode()
-
-    def reset_input_buffer(self):
-        """
-        Reset the mock serial port's input buffer
-
-        For this mock serial port, this method does nothing
-        """
-        pass
-
-    def reset_output_buffer(self):
-        """
-        Reset the mock serial port's output buffer
-
-        For this mock serial port, this method does nothing
-        """
-        pass
-
-
-"""
-Send (set):
-    0   A
-    1   Mode A1
-    2   Mode A2
-    3   E-Stop A
-    4   Interlock A
-    5   B
-    6   Mode B1
-    7   Mode B2
-    8   E-Stop B
-    9   Interlock B
-    10  P
-    11  Power
-"""
-
-"""
-Send (read):
-    0   R
-
-Receive:
-    0   Mode A1
-    1   Mode A2
-    2   E-Stop A
-    3   Interlock A
-    4   Stop A
-    5   Teach Mode A
-    6   Heartbeat A
-    7   Mode B1
-    8   Mode B2
-    9   E-Stop B
-    10  Interlock B
-    11  Stop B
-    12  Teach Mode B
-    13  Heartbeat B
-"""
-
-
-"""
-New proposed protocol:
-
-Send (set mode):
-    0   M
-    1   Mode A1
-    2   Mode A2
-    3   Mode B1
-    4   Mode B2
-
-Send (set e-stop):
-    0   E
-    1   E-Stop A
-    2   E-Stop B
-    3   A|B
-    4   X
-    5   X
-    6   X
-    7   X
-    8   X
-
-Send (set interlock):
-    0   I
-    1   Interlock A
-    2   Interlock B
-    3   A|B
-    4   X
-    5   X
-    6   X
-    7   X
-    8   X
-
-Send (set power):
-    0   P
-    1   Power
-
-Send (set all):
-    0   A
-    1   Mode A1
-    2   Mode A2
-    3   E-Stop A
-    4   Interlock A
-    5   B
-    6   Mode B1
-    7   Mode B2
-    8   E-Stop B
-    9   Interlock B
-    10  P
-    11  Power
-
-Send (set echo string):
-    0   S
-    1   Char 1
-    2   Char 2
-    ...
-    N   Char N
-    N+1 \n
-
-Receive (for all set commands):
-    0   O
-    1   K
-    2   \n
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Send (read all):
-    0   R
-
-Receive:
-    0   Mode A1
-    1   Mode A2
-    2   E-Stop A
-    3   Interlock A
-    4   Stop A
-    5   Teach Mode A
-    6   Heartbeat A
-    7   Mode B1
-    8   Mode B2
-    9   E-Stop B
-    10  Interlock B
-    11  Stop B
-    12  Teach Mode B
-    13  Heartbeat B
-    14  \n
-
-
-Send (read heartbeat):
-    0   H
-
-Receive:
-    0   A
-    1   X
-    2   X
-    3   X
-    4   X
-    5   X
-    6   B
-    7   X
-    8   X
-    9   X
-    10  X
-    11  X
-    12  \n
-
-"""

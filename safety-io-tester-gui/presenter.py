@@ -3,7 +3,6 @@ from typing import Protocol
 from model import Model
 import logging
 
-
 POLLING_RATE = 100  # [ms] polling rate for output pin states
 logger = logging.getLogger("safety_io_logger")  # logger for all modules
 
@@ -99,7 +98,6 @@ class Presenter:
         self.start_logger()
 
         # Start GUI
-        self.view.after(POLLING_RATE, self.update_output_pin_indicators)
         self.view.mainloop()
 
     def update_output_pin_indicators(self) -> None:
@@ -108,7 +106,13 @@ class Presenter:
 
         This function is called every POLLING_RATE ms
         """
-        self.view.set_output_pin_indicators(self.model.request_output_pin_states())
+        pin_states = self.model.request_output_pin_states()
+        if not pin_states:
+            self.failed_to_communicate()
+            return
+        self.view.set_output_pin_indicators(pin_states)
+
+        # Poll again after POLLING_RATE ms
         self.view.after(POLLING_RATE, self.update_output_pin_indicators)
 
     def connect_to_serial_port(self, port: str) -> None:
@@ -135,6 +139,9 @@ class Presenter:
         if self.model.connect_to_serial_port(port):
             logger.info(f"Successfully connected to serial port '{port}'")
             self.view.set_connection_status("Connected")
+
+            # Begin polling output pin states
+            self.view.after(POLLING_RATE, self.update_output_pin_indicators)
         else:
             logger.error(f"Failed to connect to serial port '{port}'")
             self.view.set_connection_status("Disconnected")
