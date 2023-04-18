@@ -7,17 +7,44 @@ import logging
 import sys
 import random
 
-BAUD_RATE = 115200  # baud rate for serial communication
-logger = logging.getLogger("safety_io_logger")  # logger for all modules
+BAUD_RATE = 115200  # Baud rate for serial communication
+logger = logging.getLogger("safety_io_logger")  # Logger for all modules
 
 
 class Model:
+
+    """
+    Model for the Safety IO Tester application
+
+    Attributes:
+        serial: Serial object for serial communication
+        output_pin_states: Dictionary of dual channel pin names to a tuple of pin states
+
+    Methods:
+        detect_arduino_ports: Get port names of all connected Arduinos
+        connect_to_serial_port: Connect to the serial device over the specified port
+        disconnect_from_serial_port: Disconnect from the serial device
+        write_data: Send data to the connected serial device
+        read_response_OK: Validate the expected "OK\n" response from the serial device
+        request_output_pin_states: Get updated output pin states from the controller
+        set_mode: Set the mode of the controller to one of the 4 valid states
+        toggle_mode_bit: Toggle the specified mode bit
+        toggle_estop: Toggle the E-Stop channels A and B
+        toggle_interlock: Toggle the Interlock channels A and B
+        toggle_power: Toggle the Power channels A and B
+        request_heartbeat: Request a heartbeat measurement from the controller
+        set_echo_string: Set the echo string of the Safety IO Tester
+    """
+
     def __init__(self) -> None:
-        self.serial = MockSerialPort()  # for testing without Arduino
+        """
+        Initialize the model
+        """
+        self.serial = MockSerialPort()  # For testing without Arduino
         # self.serial = serial.Serial()
         self.serial.baudrate = BAUD_RATE
-        self.serial.timeout = 1  # timeout for read operations (in seconds)
-        self.serial.write_timeout = 1  # timeout for write operations (in seconds)
+        self.serial.timeout = 1  # Timeout for read operations (in seconds)
+        self.serial.write_timeout = 1  # Timeout for write operations (in seconds)
 
         self.output_pin_states = {
             "mode1": (False, False),
@@ -42,7 +69,7 @@ class Model:
             p.device
             for p in serial.tools.list_ports.comports()
             if p.vid
-            in [0x2341, 0x2A03, 0x1B4F, 0x239A]  # list of typical Arduino vendor IDs
+            in [0x2341, 0x2A03, 0x1B4F, 0x239A]  # List of typical Arduino vendor IDs
         ]
 
     def connect_to_serial_port(self, port: str) -> bool:

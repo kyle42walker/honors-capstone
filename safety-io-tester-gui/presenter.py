@@ -3,8 +3,8 @@ from typing import Protocol
 from model import Model
 import logging
 
-POLLING_RATE = 100  # [ms] polling rate for output pin states
-logger = logging.getLogger("safety_io_logger")  # logger for all modules
+POLLING_RATE = 100  # Polling rate for output pin states [ms]
+logger = logging.getLogger("safety_io_logger")  # Logger for all modules
 
 
 class Model(Protocol):
@@ -80,6 +80,32 @@ class View(Protocol):
 
 
 class Presenter:
+
+    """
+    Presenter class for the Safety IO GUI
+
+    Attributes:
+        model: Model object
+        view: View object
+
+    Methods:
+        run: Run the application
+        update_output_pin_indicators: Update the output pin indicators in the GUI
+        connect_to_serial_port: Connect to the serial port
+        disconnect_from_serial_port: Disconnect from the serial port
+        failed_to_communicate: Log failed communication and disconnect from serial port
+        set_mode: Set the mode of the controller
+        toggle_mode_bit: Toggle a mode bit
+        toggle_estop: Toggle the E-Stop
+        toggle_interlock: Toggle the interlock
+        toggle_power: Toggle the power
+        request_heartbeat: Request the heartbeat
+        echo_string: Set the echo string
+        start_logger: Start the console and GUI loggers
+        start_logging_to_file: Start logging to a file
+        stop_logging_to_file: Stop logging to a file
+    """
+
     def __init__(self, model: Model, view: View) -> None:
         """
         Initialize the presenter
@@ -117,9 +143,9 @@ class Presenter:
 
     def connect_to_serial_port(self, port: str) -> None:
         """
-        Connect to serial port
+        Connect to the serial port
 
-        port: port to connect to. If None, try to detect Arduino port automatically
+        port: port to connect to. If None, try to detect an Arduino port automatically
         """
         # If no port is specified, try to detect one
         if not port:
@@ -148,7 +174,7 @@ class Presenter:
 
     def disconnect_from_serial_port(self) -> None:
         """
-        Disconnect from serial port
+        Disconnect from the serial port
         """
         self.model.disconnect_from_serial_port()
         logger.info("Disconnected from serial port")
@@ -156,7 +182,7 @@ class Presenter:
 
     def failed_to_communicate(self) -> None:
         """
-        Log a failed communication attempt
+        Log a failed communication attempt and disconnect from the serial port
         """
         logger.error("Failed to communincate with serial device")
         self.model.disconnect_from_serial_port()
@@ -333,9 +359,20 @@ class Presenter:
 
 class Gui_Log_Handler(logging.Handler):
 
-    """Handler for logging to GUI"""
+    """
+    Handler for logging to GUI
+
+    Attributes:
+        view: View object containing the GUI log method
+
+    Methods:
+        emit: Emit a log message by displaying it in the GUI
+    """
 
     def __init__(self, view: View):
+        """
+        Intialize the GUI log handler
+        """
         super().__init__()
         self.view = view
 
