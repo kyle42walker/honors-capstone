@@ -73,11 +73,11 @@ class View(tk.Tk):
     ) -> None:
         self.frm_interactive.set_output_indicators(pin_states)
 
-    def set_connection_status(self, status: str) -> None:
+    def set_connection_status(self, status: str, port: str = None) -> None:
         """
         Set the widget status to indicate whether the serial connection is active
         """
-        self.frm_interactive.set_connection_status(status)
+        self.frm_interactive.set_connection_status(status, port)
 
     def set_heartbeat_values(self, heartbeat_hz: tuple[int, int]) -> None:
         self.frm_interactive.set_heartbeat_values(heartbeat_hz)
@@ -125,8 +125,8 @@ class Interactive_Frame(ttk.Frame):
         self.pnl_heartbeat.set_output_indicators(*pin_states["heartbeat"])
         self.pnl_echo_str.set_output_indicators(*pin_states["teach"])
 
-    def set_connection_status(self, status: str) -> None:
-        self.pnl_ser_con.set_connection_status(status)
+    def set_connection_status(self, status: str, port: str = None) -> None:
+        self.pnl_ser_con.set_connection_status(status, port)
 
     def set_heartbeat_values(self, heartbeat_hz: tuple[int, int]) -> None:
         self.pnl_heartbeat.set_heartbeat_values(heartbeat_hz)
@@ -262,15 +262,25 @@ class Serial_Connect_Panel(Interactive_Panel):
         )
         self.lbl_status.grid(row=0, column=1, sticky="W")
 
-    def set_connection_status(self, status: str) -> None:
+    def set_connection_status(self, status: str, port: str = None) -> None:
+        """
+        Configure the widgets of this panel to reflect the connection status
+
+        status: "Connected" or "Disconnected"
+        port: COM port name
+        """
         match status:
             case "Connected":
+                if port:
+                    self.com_port.set(port)
+                self.ent_com_port.configure(state="disabled")
                 self.lbl_status.configure(text=status, foreground="green")
                 self.btn_connect.configure(
                     text="Disconnect",
                     command=self.presenter.disconnect_from_serial_port,
                 )
             case "Disconnected":
+                self.ent_com_port.configure(state="normal")
                 self.lbl_status.configure(text=status, foreground="red")
                 self.btn_connect.configure(
                     text="Connect",

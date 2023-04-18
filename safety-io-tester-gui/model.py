@@ -513,11 +513,20 @@ class MockSerialPort:
             case "H":
                 self.heartbeat_requested = True
             case "M":
-                self.pin_states["mode1"] = (chr(data[1]) == "1", chr(data[3]) == "1")
-                self.pin_states["mode2"] = (chr(data[2]) == "1", chr(data[4]) == "1")
+                self.pin_states["mode1"] = (
+                    chr(data[1]) == "1",
+                    chr(data[3]) == "1",
+                )
+                self.pin_states["mode2"] = (
+                    chr(data[2]) == "1",
+                    chr(data[4]) == "1",
+                )
                 self.expect_ok = True
             case "E":
-                self.pin_states["estop"] = (chr(data[1]) == "1", chr(data[2]) == "1")
+                self.pin_states["estop"] = (
+                    chr(data[1]) == "1",
+                    chr(data[2]) == "1",
+                )
                 self.expect_ok = True
             case "I":
                 self.pin_states["interlock"] = (
@@ -526,10 +535,15 @@ class MockSerialPort:
                 )
                 self.expect_ok = True
             case "P":
-                self.pin_states["power"] = (chr(data[1]) == "1", chr(data[1]) == "1")
+                self.pin_states["power"] = (
+                    chr(data[1]) == "1",
+                    chr(data[1]) == "1",
+                )
                 self.expect_ok = True
             case "S":
                 self.expect_ok = True
+
+            # Unexpected output: print the data to stdout
             case _:
                 sys.stdout.write(str(data) + "\n")
                 sys.stdout.flush()
@@ -619,6 +633,8 @@ class MockSerialPort:
     def encode_heartbeat(self) -> bytes:
         """
         Encode the heartbeat into a byte string
+
+        For this mock serial port, the heartbeat is a random number between 0 and 99999
 
         Heartbeat is encoded into a byte string in the following format:
         Index   Data byte

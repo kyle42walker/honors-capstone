@@ -63,7 +63,7 @@ class View(Protocol):
     ) -> None:
         ...
 
-    def set_connection_status(self, status: str) -> None:
+    def set_connection_status(self, status: str, port: str = None) -> None:
         ...
 
     def set_hearbeat_values(self, heartbeat_hz: tuple[int, int]) -> None:
@@ -138,7 +138,7 @@ class Presenter:
         # Attempt to connect to serial port
         if self.model.connect_to_serial_port(port):
             logger.info(f"Successfully connected to serial port '{port}'")
-            self.view.set_connection_status("Connected")
+            self.view.set_connection_status("Connected", port=port)
 
             # Begin polling output pin states
             self.view.after(POLLING_RATE, self.update_output_pin_indicators)
