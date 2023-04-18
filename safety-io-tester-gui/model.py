@@ -2,7 +2,10 @@ import serial
 from serial import SerialException, SerialTimeoutException
 import serial.tools.list_ports
 import logging
+
+# For testing without Arduino
 import sys
+import random
 
 BAUD_RATE = 115200  # baud rate for serial communication
 logger = logging.getLogger("safety_io_logger")  # logger for all modules
@@ -16,7 +19,7 @@ class Model:
         self.serial.timeout = 1  # timeout for read operations (in seconds)
         self.serial.write_timeout = 1  # timeout for write operations (in seconds)
 
-        self.output_pins_states = {}
+        self.output_pin_states = {}
 
     def detect_arduino_ports(self) -> list[str]:
         """
@@ -144,7 +147,7 @@ class Model:
             return {}
 
         # Parse response
-        logger.debug(f"Response: '{response}'")
+        # logger.debug(f"Response: '{response}'")
         pin_states = {
             "mode1": (response[1] == "1", response[10] == "1"),
             "mode2": (response[2] == "1", response[11] == "1"),
@@ -157,9 +160,9 @@ class Model:
         }
 
         # Only log if the pin states have changed
-        if self.output_pins_states != pin_states:
+        if self.output_pin_states != pin_states:
             logger.info(f"Output pin states changed to: {response}")
-            self.output_pins_states = pin_states
+            self.output_pin_states = pin_states
         return pin_states
 
     def set_mode(self, mode_str: str) -> bool:
@@ -366,7 +369,7 @@ class Model:
         """
 
         # Get current power state
-        power = self.output_pins_states["power"]
+        power = self.output_pin_states["power"]
 
         # If device is powered on, turn it off
         if power[0] or power[1]:
@@ -461,6 +464,23 @@ class MockSerialPort:
         self.port = None
         self.is_open = False
 
+        # Variables to simulate controller state
+        self.expect_ok = False
+        self.read_requested = False
+        self.heartbeat_requested = False
+
+        # Set the default pin states
+        self.pin_states = {
+            "mode1": (False, True),
+            "mode2": (True, False),
+            "estop": (True, True),
+            "interlock": (True, True),
+            "stop": (True, True),
+            "teach": (False, False),
+            "heartbeat": (False, False),
+            "power": (True, True),
+        }
+
     def open(self):
         """
         Open the mock serial port
@@ -485,8 +505,34 @@ class MockSerialPort:
         if not self.is_open:
             raise SerialException("Mock serial port is not open")
 
-        sys.stdout.write(str(data) + "\n")
-        sys.stdout.flush()
+        str_data = data.decode().strip()
+
+        match str_data[0]:
+            case "R":
+                self.read_requested = True
+            case "H":
+                self.heartbeat_requested = True
+            case "M":
+                self.pin_states["mode1"] = (chr(data[1]) == "1", chr(data[3]) == "1")
+                self.pin_states["mode2"] = (chr(data[2]) == "1", chr(data[4]) == "1")
+                self.expect_ok = True
+            case "E":
+                self.pin_states["estop"] = (chr(data[1]) == "1", chr(data[2]) == "1")
+                self.expect_ok = True
+            case "I":
+                self.pin_states["interlock"] = (
+                    chr(data[1]) == "1",
+                    chr(data[2]) == "1",
+                )
+                self.expect_ok = True
+            case "P":
+                self.pin_states["power"] = (chr(data[1]) == "1", chr(data[1]) == "1")
+                self.expect_ok = True
+            case "S":
+                self.expect_ok = True
+            case _:
+                sys.stdout.write(str(data) + "\n")
+                sys.stdout.flush()
 
     def read(self, size: int = 1) -> bytes:
         """
@@ -503,4 +549,97 @@ class MockSerialPort:
         if not self.is_open:
             raise SerialException("Mock serial port is not open")
 
-        return sys.stdin.read(size).encode()
+        if self.expect_ok:
+            self.expect_ok = False
+            return b"OK\n"
+
+        elif self.read_requested:
+            self.read_requested = False
+            return self.encode_pin_states()
+
+        elif self.heartbeat_requested:
+            self.heartbeat_requested = False
+            return self.encode_heartbeat()
+
+        else:
+            return sys.stdin.read(size).encode()
+
+    def encode_pin_states(self) -> bytes:
+        """
+        Encode the pin states into a byte string
+
+        Pin states are encoded into a byte string in the following format:
+        Index   Data byte
+            0   A
+            1   (0|1) - Mode A1
+            2   (0|1) - Mode A2
+            3   (0|1) - E-Stop A
+            4   (0|1) - Interlock A
+            5   (0|1) - Stop A
+            6   (0|1) - Teach Mode A
+            7   (0|1) - Heartbeat A
+            8   (0|1) - Power A
+            9   B
+            10  (0|1) - Mode B1
+            11  (0|1) - Mode B2
+            12  (0|1) - E-Stop B
+            13  (0|1) - Interlock B
+            14  (0|1) - Stop B
+            15  (0|1) - Teach Mode B
+            16  (0|1) - Heartbeat B
+            17  (0|1) - Power B
+            18  \n
+
+        Returns:
+            Byte string of the pin states
+        """
+        response = [
+            "A",
+            str(int(self.pin_states["mode1"][0])),
+            str(int(self.pin_states["mode2"][0])),
+            str(int(self.pin_states["estop"][0])),
+            str(int(self.pin_states["interlock"][0])),
+            str(int(self.pin_states["stop"][0])),
+            str(int(self.pin_states["teach"][0])),
+            str(int(self.pin_states["heartbeat"][0])),
+            str(int(self.pin_states["power"][0])),
+            "B",
+            str(int(self.pin_states["mode1"][1])),
+            str(int(self.pin_states["mode2"][1])),
+            str(int(self.pin_states["estop"][1])),
+            str(int(self.pin_states["interlock"][1])),
+            str(int(self.pin_states["stop"][1])),
+            str(int(self.pin_states["teach"][1])),
+            str(int(self.pin_states["heartbeat"][1])),
+            str(int(self.pin_states["power"][1])),
+            "\n",
+        ]
+        return bytearray([ord(b) for b in response])
+
+    def encode_heartbeat(self) -> bytes:
+        """
+        Encode the heartbeat into a byte string
+
+        Heartbeat is encoded into a byte string in the following format:
+        Index   Data byte
+            0   A
+            1   X
+            2   X
+            3   X
+            4   X
+            5   X
+            6   B
+            7   X
+            8   X
+            9   X
+            10  X
+            11  X
+            12  \n
+
+        Returns:
+            Byte string of the heartbeat
+        """
+        heartbeat_a = random.randint(0, 99999)
+        heartbeat_b = random.randint(0, 99999)
+
+        return bytes(f"A{heartbeat_a:05d}B{heartbeat_b:05d}", "utf-8")
