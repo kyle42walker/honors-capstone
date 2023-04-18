@@ -427,7 +427,7 @@ class Emergency_Stop_Panel(Interactive_Panel):
 
         btn_e_stop = tk.Button(
             frame,
-            text="E-Stop",
+            text="Toggle E-Stop",
             background="red",
             relief="groove",
             width=self.button_size[0],
@@ -447,11 +447,11 @@ class Emergency_Stop_Panel(Interactive_Panel):
     def create_center_widgets(self, frame: ttk.Frame) -> None:
         # E-Stop dual channel trigger selection
         self.trigger_states = {
-            "A and B": "A and B ON simultaneously",
-            "A then B": "B ON after A by [Delay] ms",
-            "B then A": "A ON after B by [Delay] ms",
-            "A only": "A ON and B OFF",
-            "B only": "B ON and A OFF",
+            "A and B": "Toggle A and B together",
+            "A then B": "Toggle A then B, [Delay] ms",
+            "B then A": "Toggle B then A, [Delay] ms",
+            "A only": "Toggle A only",
+            "B only": "Toggle B only",
         }
         self.e_stop_trigger_selection = tk.StringVar(frame)
         self.e_stop_trigger_selection.set(self.trigger_states["A and B"])
@@ -535,7 +535,7 @@ class Interlock_Panel(Interactive_Panel):
 
         btn_interlock = tk.Button(
             frame,
-            text="Interlock",
+            text="Toggle Interlock",
             background="yellow",
             relief="groove",
             width=self.button_size[0],
@@ -555,11 +555,11 @@ class Interlock_Panel(Interactive_Panel):
     def create_center_widgets(self, frame: ttk.Frame) -> None:
         # Interlock dual channel trigger selection
         self.trigger_states = {
-            "A and B": "A and B ON simultaneously",
-            "A then B": "B ON after A by [Delay] ms",
-            "B then A": "A ON after B by [Delay] ms",
-            "A only": "A ON and B OFF",
-            "B only": "B ON and A OFF",
+            "A and B": "Toggle A and B together",
+            "A then B": "Toggle A then B, [Delay] ms",
+            "B then A": "Toggle B then A, [Delay] ms",
+            "A only": "Toggle A only",
+            "B only": "Toggle B only",
         }
         self.interlock_trigger_selection = tk.StringVar(frame)
         self.interlock_trigger_selection.set(self.trigger_states["A and B"])
@@ -644,7 +644,7 @@ class Power_Panel(Interactive_Panel):
 
         btn_power = tk.Button(
             frame,
-            text="Power",
+            text="Toggle Power",
             background="green3",
             relief="groove",
             width=self.button_size[0],

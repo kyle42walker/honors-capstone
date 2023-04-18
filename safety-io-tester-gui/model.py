@@ -19,7 +19,16 @@ class Model:
         self.serial.timeout = 1  # timeout for read operations (in seconds)
         self.serial.write_timeout = 1  # timeout for write operations (in seconds)
 
-        self.output_pin_states = {}
+        self.output_pin_states = {
+            "mode1": (False, False),
+            "mode2": (False, False),
+            "estop": (False, False),
+            "interlock": (False, False),
+            "stop": (False, False),
+            "teach": (False, False),
+            "heartbeat": (False, False),
+            "power": (False, False),
+        }
 
     def detect_arduino_ports(self) -> list[str]:
         """
@@ -86,13 +95,13 @@ class Model:
         Read the response from the serial device
 
         Returns:
-            True if the response was "OK", False otherwise
+            True if the response was "OK\n", False otherwise
 
         Raises:
             SerialException: if there is an error reading from the serial device
         """
         response = self.serial.read(3).decode().strip()
-        logger.info(f"Response: '{response}'")
+        # logger.debug(f"Response: '{response}'")
         return response == "OK"
 
     def request_output_pin_states(self) -> dict[str, tuple[bool, bool]]:
@@ -243,15 +252,15 @@ class Model:
         data = bytearray([ord("M")] + [ord(b) for b in mode_bits])
         return self.write_data(data)
 
-    def set_estop(
+    def toggle_estop(
         self,
-        e_stop_a: bool,
-        e_stop_b: bool,
+        toggle_e_stop_a: bool,
+        toggle_e_stop_b: bool,
         first_channel: str = "",
         delay_ms: int = 0,
     ) -> bool:
         """
-        Set the emergency stop pin states
+        Toggle the emergency stop pin states
 
         Send data to the serial device in the following format:
         Index   Data byte
@@ -268,16 +277,24 @@ class Model:
             8   (0-9)
 
         e.g. "E10" sets e-stop A ON and B OFF simultaneously,
-        "E11B00100" sets e-stop A 100 ms after e-stop B
+        "E11B00100" sets e-stop A ON 100 ms after e-stop B ON
 
-        e_stop_a: True to set e-stop A, False to clear e-stop A
-        e_stop_b: True to set e-stop B, False to clear e-stop B
-        first_channel: which e-stop to set first before the delay ("A" or "B")
+        toggle_e_stop_a: True to toggle channel A, False to leave channel A unchanged
+        toggle_e_stop_b: True to toggle channel B, False to leave channel B unchanged
+        first_channel: which e-stop to toggle first before the delay ("A" or "B")
         delay_ms: delay in milliseconds between setting channels A and B
 
         Returns:
             True if the data was sent successfully, False otherwise
         """
+        # Get current e-stop states
+        curr_e_stop_a = self.output_pin_states["estop"][0]
+        curr_e_stop_b = self.output_pin_states["estop"][1]
+
+        # Toggle e-stop states if specified
+        e_stop_a = not curr_e_stop_a if toggle_e_stop_a else curr_e_stop_a
+        e_stop_b = not curr_e_stop_b if toggle_e_stop_b else curr_e_stop_b
+
         # If a delay is specified
         if first_channel == "A" or first_channel == "B":
             e_stop_bits = [
@@ -298,15 +315,15 @@ class Model:
         data = bytearray([ord("E")] + [ord(b) for b in e_stop_bits])
         return self.write_data(data)
 
-    def set_interlock(
+    def toggle_interlock(
         self,
-        interlock_a: bool,
-        interlock_b: bool,
+        toggle_interlock_a: bool,
+        toggle_interlock_b: bool,
         first_channel: str = "",
         delay_ms: int = 0,
     ) -> bool:
         """
-        Set the interlock pin states
+        Toggle the interlock pin states
 
         Send data to the serial device in the following format:
         Index   Data byte
@@ -325,14 +342,22 @@ class Model:
         e.g. "E10" sets interlock A ON and B OFF simultaneously,
         "E11B00100" sets interlock A 100 ms after interlock B
 
-        interlock_a: True to set interlock A, False to clear interlock A
-        interlock_b: True to set interlock B, False to clear interlock B
+        toggle_interlock_a: True to toggle channel A, False to leave channel A unchanged
+        toggle_interlock_b: True to toggle channel B, False to leave channel B unchanged
         first_channel: which interlock to set first before the delay ("A" or "B")
         delay_ms: delay in milliseconds between setting channels A and B
 
         Returns:
             True if the data was sent successfully, False otherwise
         """
+        # Get current interlock states
+        curr_interlock_a = self.output_pin_states["interlock"][0]
+        curr_interlock_b = self.output_pin_states["interlock"][1]
+
+        # Toggle interlock states if specified
+        interlock_a = not curr_interlock_a if toggle_interlock_a else curr_interlock_a
+        interlock_b = not curr_interlock_b if toggle_interlock_b else curr_interlock_b
+
         # If a delay is specified
         if first_channel == "A" or first_channel == "B":
             interlock_bits = [

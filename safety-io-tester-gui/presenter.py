@@ -26,19 +26,19 @@ class Model(Protocol):
     def toggle_mode_bit(self, bit_id: str) -> bool:
         ...
 
-    def set_estop(
+    def toggle_estop(
         self,
-        e_stop_a: bool,
-        e_stop_b: bool,
+        toggle_e_stop_a: bool,
+        toggle_e_stop_b: bool,
         first_channel: str = "",
         delay_ms: int = 0,
     ) -> bool:
         ...
 
-    def set_interlock(
+    def toggle_interlock(
         self,
-        interlock_a: bool,
-        interlock_b: bool,
+        toggle_interlock_a: bool,
+        toggle_interlock_b: bool,
         first_channel: str = "",
         delay_ms: int = 0,
     ) -> bool:
@@ -195,23 +195,23 @@ class Presenter:
 
         match trigger_state:
             case "A and B":
-                if self.model.set_estop(True, True):
+                if self.model.toggle_estop(True, True):
                     logger.debug(f"E-stops A and B")
                     communication_successful = True
             case "A then B":
-                if self.model.set_estop(True, True, "A", int(delay_ms)):
+                if self.model.toggle_estop(True, True, "A", int(delay_ms)):
                     logger.debug(f"E-stop A then B, {delay_ms} ms delay")
                     communication_successful = True
             case "B then A":
-                if self.model.set_estop(True, True, "B", int(delay_ms)):
+                if self.model.toggle_estop(True, True, "B", int(delay_ms)):
                     logger.debug(f"E-stop B then A, {delay_ms} ms delay")
                     communication_successful = True
             case "A only":
-                if self.model.set_estop(True, False):
+                if self.model.toggle_estop(True, False):
                     logger.debug(f"E-stop A only")
                     communication_successful = True
             case "B only":
-                if self.model.set_estop(False, True):
+                if self.model.toggle_estop(False, True):
                     logger.debug(f"E-stop B only")
                     communication_successful = True
 
@@ -229,23 +229,23 @@ class Presenter:
 
         match trigger_state:
             case "A and B":
-                if self.model.set_interlock(True, True):
+                if self.model.toggle_interlock(True, True):
                     logger.debug(f"Interlocks A and B")
                     communication_successful = True
             case "A then B":
-                if self.model.set_interlock(True, True, "A", int(delay_ms)):
+                if self.model.toggle_interlock(True, True, "A", int(delay_ms)):
                     logger.debug(f"Interlock A then B, {delay_ms} ms delay")
                     communication_successful = True
             case "B then A":
-                if self.model.set_interlock(True, True, "B", int(delay_ms)):
+                if self.model.toggle_interlock(True, True, "B", int(delay_ms)):
                     logger.debug(f"Interlock B then A, {delay_ms} ms delay")
                     communication_successful = True
             case "A only":
-                if self.model.set_interlock(True, False):
+                if self.model.toggle_interlock(True, False):
                     logger.debug(f"Interlock A only")
                     communication_successful = True
             case "B only":
-                if self.model.set_interlock(False, True):
+                if self.model.toggle_interlock(False, True):
                     logger.debug(f"Interlock B only")
                     communication_successful = True
 
