@@ -205,11 +205,11 @@ class Model:
 
             Optional 5-digit delay in milliseconds
             3   (A|B) - Which e-stop channel to set first before the delay
-            4   (0-9) - X
-            5   (0-9) - X
-            6   (0-9) - X
-            7   (0-9) - X
-            8   (0-9) - X
+            4   (0-9)
+            5   (0-9)
+            6   (0-9)
+            7   (0-9)
+            8   (0-9)
 
         e.g. "E10" sets e-stop A ON and B OFF simultaneously,
         "E11B00100" sets e-stop A 100 ms after e-stop B
@@ -260,11 +260,11 @@ class Model:
 
             Optional 5-digit delay in milliseconds
             3   (A|B) - Which interlock channel to set first before the delay
-            4   (0-9) - X
-            5   (0-9) - X
-            6   (0-9) - X
-            7   (0-9) - X
-            8   (0-9) - X
+            4   (0-9)
+            5   (0-9)
+            6   (0-9)
+            7   (0-9)
+            8   (0-9)
 
         e.g. "E10" sets interlock A ON and B OFF simultaneously,
         "E11B00100" sets interlock A 100 ms after interlock B
@@ -374,6 +374,29 @@ class Model:
                 return None
 
         return heartbeat_hz
+
+    def set_echo_string(self, echo_string: str) -> bool:
+        """
+        Set the echo string
+
+        Send data to the serial device in the following format:
+        Index   Data byte
+            0   S
+            1   Char 1
+            2   Char 2
+            ...
+            N   Char N
+            N+1 \n
+
+        e.g. "SHello World!" sets the echo string to "Hello World!"
+
+        echo_string: string to send to the Saftey IO Tester
+
+        Returns:
+            True if the data was sent successfully, False otherwise
+        """
+        data = bytearray([ord("S")] + [ord(c) for c in echo_string])
+        return self.write_data(data)
 
 
 class MockSerialPort:
@@ -535,6 +558,14 @@ Send (set all):
     9   Interlock B
     10  P
     11  Power
+
+Send (set echo string):
+    0   S
+    1   Char 1
+    2   Char 2
+    ...
+    N   Char N
+    N+1 \n
 
 Receive (for all set commands):
     0   O

@@ -51,6 +51,9 @@ class Model(Protocol):
     def request_heartbeat(self) -> tuple[int, int] | None:
         ...
 
+    def set_echo_string(self, echo_string: str) -> bool:
+        ...
+
 
 class View(Protocol):
     def init_gui(self, presenter: Presenter) -> None:
@@ -252,6 +255,9 @@ class Presenter:
             self.failed_to_communicate()
 
     def measure_heartbeat(self) -> None:
+        """
+        Measure the heartbeat (A and B) of the controller and display the results
+        """
         heartbeat_hz = self.model.request_heartbeat()
         if heartbeat_hz:
             logger.debug(
@@ -262,7 +268,15 @@ class Presenter:
             self.failed_to_communicate()
 
     def echo_string(self, message: str) -> None:
-        logger.debug(f"echo: {message}")
+        """
+        Echo a string to be displayed on the Saftey IO Tester
+
+        message: string to echo
+        """
+        if self.model.set_echo_string(message):
+            logger.debug(f"Echo string: '{message}'")
+        else:
+            self.failed_to_communicate()
 
     def start_logger(self) -> None:
         """
