@@ -4,10 +4,11 @@ from tkinter import filedialog as fd
 from typing import Protocol
 from abc import ABC, abstractmethod
 from PIL import ImageTk, Image
+from pathlib import Path
 
 
 TITLE = "Safety I/O Tester"
-IMAGE_PATH = "Resource/Images/"
+IMAGE_PATH = Path(__file__).absolute().parent / "Resource/Images/"
 FONT_SIZE = 11
 
 
@@ -71,7 +72,7 @@ class View(tk.Tk):
         """
         super().__init__()
         self.title(TITLE)
-        self.iconphoto(False, tk.PhotoImage(file=IMAGE_PATH + "brooks_logo.png"))
+        self.iconphoto(False, tk.PhotoImage(file=IMAGE_PATH / "brooks_logo.png"))
         self.resizable(False, False)
 
         # Set font size for all widgets
@@ -244,10 +245,10 @@ class Interactive_Panel(ABC):
         # Create output pin indicator images
         self.output_pin_indicators = {}
         self.ind_off_img = ImageTk.PhotoImage(
-            Image.open(IMAGE_PATH + "indicator_off.png")
+            Image.open(IMAGE_PATH / "indicator_off.png")
         )
         self.ind_on_img = ImageTk.PhotoImage(
-            Image.open(IMAGE_PATH + "indicator_on.png")
+            Image.open(IMAGE_PATH / "indicator_on.png")
         )
 
         # Create widgets
