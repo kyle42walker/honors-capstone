@@ -200,6 +200,7 @@ class MockSerialPort:
             str(int(self.pin_states["power"][1])),
             "\n",
         ]
+        self._update_heartbeat()
         return bytearray([ord(b) for b in response])
 
     def _encode_heartbeat(self) -> bytes:
@@ -227,7 +228,18 @@ class MockSerialPort:
         Returns:
             Byte string of the heartbeat
         """
-        heartbeat_a = random.randint(0, 99999)
-        heartbeat_b = random.randint(0, 99999)
+        heartbeat_a = random.randint(5, 15)
+        heartbeat_b = random.randint(5, 15)
 
         return bytes(f"A{heartbeat_a:05d}B{heartbeat_b:05d}", "utf-8")
+
+    def _update_heartbeat(self):
+        """
+        Update the heartbeat pin states
+
+        For this mock serial port, the heartbeat pins are randomly set to 0 or 1
+        """
+        self.pin_states["heartbeat"] = (
+            random.getrandbits(1),
+            random.getrandbits(1),
+        )

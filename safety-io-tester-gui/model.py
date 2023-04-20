@@ -196,7 +196,7 @@ class Model:
 
         # Only log if the pin states have changed
         if self.detect_pin_change(pin_states):
-            logger.info(f"Output pin states changed to: {response}")
+            logger.info(f"Pin states updated: {response}")
             self.output_pin_states = pin_states
         return pin_states
 
@@ -516,7 +516,7 @@ class Model:
             if pin == "heartbeat":
                 continue
 
-            if new_pin_states[pin] != self.pin_states[pin]:
+            if new_pin_states[pin] != self.output_pin_states[pin]:
                 return True
 
         return False
