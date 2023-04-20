@@ -32,6 +32,7 @@ class Model:
         toggle_power: Toggle the Power channels A and B
         request_heartbeat: Request a heartbeat measurement from the controller
         set_echo_string: Set the echo string of the Safety IO Tester
+        detect_pin_change: Detect a change in a pin other than the heartbeat
     """
 
     def __init__(self) -> None:
@@ -194,7 +195,7 @@ class Model:
         }
 
         # Only log if the pin states have changed
-        if self.output_pin_states != pin_states:
+        if self.detect_pin_change(pin_states):
             logger.info(f"Output pin states changed to: {response}")
             self.output_pin_states = pin_states
         return pin_states
@@ -501,3 +502,21 @@ class Model:
         """
         data = bytearray([ord("S")] + [ord(c) for c in echo_string] + [ord("\n")])
         return self.write_data(data)
+
+    def detect_pin_change(self, new_pin_states: dict[str, tuple[bool, bool]]) -> bool:
+        """
+        Detect a change in a pin other than the heartbeat pin
+
+        Returns:
+            True if a change was detected, False otherwise
+        """
+        # Compare the current pin states to the previous pin states
+        for pin in new_pin_states:
+            # Skip the heartbeat pin
+            if pin == "heartbeat":
+                continue
+
+            if new_pin_states[pin] != self.pin_states[pin]:
+                return True
+
+        return False
