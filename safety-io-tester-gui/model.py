@@ -2,7 +2,7 @@ import serial
 from serial import SerialException, SerialTimeoutException
 import serial.tools.list_ports
 import logging
-from safety_io_tester_emulator import MockSerialPort
+from mock_serial_port import MockSerialPort
 
 
 BAUD_RATE = 115200  # Baud rate for serial communication
