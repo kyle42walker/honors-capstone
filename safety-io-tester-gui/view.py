@@ -1,3 +1,12 @@
+"""
+File: view.py
+Author: Kyle Walker
+Date: 2023-04-24
+
+This module contains the View class, which is the main GUI tkinter window.
+It contains all GUI widgets and binds user interactions to the Presenter.
+"""
+
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog as fd

@@ -1,3 +1,14 @@
+/*
+ * File:   safety-io-tester-arduino.ino
+ * Author: Kyle Walker (UMass Lowell Honors Capstone Project)
+ *         Richard Barrett (Brooks SQA)
+ * Date:   2023-04-24
+ *
+ * This program is designed to run on an Arduino Mega 2560 on the safety
+ * I/O test board. It reads and writes safety I/O signals of the robot and
+ * sends the results over RS232 to a monitoring computer.
+ */
+
 // Constants
 const int BLINK_INTERVAL = 500; // Milliseconds between LED blinks
 
@@ -34,15 +45,14 @@ const int HEARTBEAT_A_RESPONSE = 45;  // Safety pin 05 *
 const int HEARTBEAT_B_RESPONSE = 43;  // Safety pin 14 *
 
 // Global variables for handling e-stop and interlock delays
-unsigned long eStopDelay_ms = 0;
-char eStopChannel = 'A';
-uint8_t eStopState = LOW;
-unsigned long eStopTriggerTime_ms = 0;
-
-unsigned long interlockDelay_ms = 0;
-char interlockChannel = 'A';
-uint8_t interlockState = LOW;
-unsigned long interlockTriggerTime_ms = 0;
+unsigned long eStopDelay_ms = 0;           // Delay (ms) to trigger second e-stop pin
+char eStopChannel = 'A';                   // Which channel to trigger e-stop on
+uint8_t eStopState = LOW;                  // State to set e-stop output pin to
+unsigned long eStopTriggerTime_ms = 0;     // Time first e-stop pin was triggered
+unsigned long interlockDelay_ms = 0;       // Delay (ms) to trigger second interlock pin
+char interlockChannel = 'A';               // Which channel to trigger interlock on
+uint8_t interlockState = LOW;              // State to set interlock output pin to
+unsigned long interlockTriggerTime_ms = 0; // Time first interlock pin was triggered
 
 void setup()
 {
@@ -109,7 +119,7 @@ void setup()
     digitalWrite(H_BEAT_TEST_BOARD, LOW);
 
     Serial.println("Initialized");
-}
+} // End setup()
 
 void loop()
 {
@@ -126,7 +136,7 @@ void loop()
     String cmd = Serial1.readStringUntil('\n');
 
     // Echo command
-    Serial.print("cmd:");
+    Serial.print("cmd: ");
     Serial.println(cmd);
 
     // Parse command and generate response
@@ -171,13 +181,12 @@ void loop()
 
     // Respond to host
     Serial1.println(response);
-}
+} // End loop()
 
 void blinkLeds(int currentMillis)
 {
-    static unsigned long previousMillis = 0; // Last time the LED was updated
-
     // LED heartbeat function
+    static unsigned long previousMillis = 0; // Last time the LED was updated
     if (currentMillis - previousMillis >= BLINK_INTERVAL)
     {
         // Store the last time the LED was updated
@@ -187,7 +196,7 @@ void blinkLeds(int currentMillis)
         digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
         digitalWrite(H_BEAT_TEST_BOARD, !digitalRead(H_BEAT_TEST_BOARD));
     }
-}
+} // End blinkLeds()
 
 void handleEStopDelay(int currentMillis)
 {
@@ -206,7 +215,7 @@ void handleEStopDelay(int currentMillis)
         else if (eStopChannel == 'B')
             digitalWrite(E_STOP_B_COMMAND, eStopState);
     }
-}
+} // End handleEStopDelay()
 
 void handleInterlockDelay(int currentMillis)
 {
@@ -225,7 +234,7 @@ void handleInterlockDelay(int currentMillis)
         else if (interlockChannel == 'B')
             digitalWrite(INTERLOCK_B_COMMAND, interlockState);
     }
-}
+} // End handleInterlockDelay()
 
 String processReadRequest(String cmd)
 {
@@ -284,7 +293,7 @@ String processReadRequest(String cmd)
     response += "\n";
 
     return response;
-}
+} // End processReadRequest()
 
 String processSetMode(String cmd)
 {
@@ -311,7 +320,7 @@ String processSetMode(String cmd)
 
     // Success
     return "OK\n";
-}
+} // End processSetMode()
 
 String processSetEStop(String cmd)
 {
@@ -372,7 +381,7 @@ String processSetEStop(String cmd)
 
     // Success (respond after setting the first pin)
     return "OK\n";
-}
+} // End processSetEStop()
 
 String processSetInterlock(String cmd)
 {
@@ -433,7 +442,7 @@ String processSetInterlock(String cmd)
 
     // Success (respond after setting the first pin)
     return "OK\n";
-}
+} // End processSetInterlock()
 
 String processSetPower(String cmd)
 {
@@ -454,7 +463,7 @@ String processSetPower(String cmd)
 
     // Success
     return "OK\n";
-}
+} // End processSetPower()
 
 String processHeartbeatRequest(String cmd)
 {
@@ -522,7 +531,7 @@ String processHeartbeatRequest(String cmd)
     response += "\n";
 
     return response;
-}
+} // End processHeartbeatRequest()
 
 String processSetEchoString(String cmd)
 {
@@ -546,7 +555,7 @@ String processSetEchoString(String cmd)
     Serial.println(echoString);
 
     return "OK\n";
-}
+} // End processSetEchoString()
 
 String processSetAll(String cmd)
 {
@@ -590,4 +599,4 @@ String processSetAll(String cmd)
 
     // Success
     return "OK\n";
-}
+} // End processSetAll()

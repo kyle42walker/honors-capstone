@@ -1,3 +1,13 @@
+"""
+File: model.py
+Author: Kyle Walker
+Date: 2023-04-24
+
+This module contains the Model class for the Safety IO Tester application.
+The model is responsible for all data manipulation and communication with the
+serial device.
+"""
+
 import serial
 from serial import SerialException, SerialTimeoutException
 import serial.tools.list_ports
@@ -40,8 +50,8 @@ class Model:
         """
         Initialize the model
         """
-        self.serial = MockSerialPort()  # For testing without Arduino
-        # self.serial = serial.Serial()
+        self.serial = MockSerialPort()  # For testing the GUI without Arduino
+        # self.serial = serial.Serial() # For running the final application
         self.serial.baudrate = BAUD_RATE
         self.serial.timeout = 1  # Timeout for read operations (in seconds)
         self.serial.write_timeout = 1  # Timeout for write operations (in seconds)

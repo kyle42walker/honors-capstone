@@ -1,3 +1,15 @@
+"""
+File: presenter.py
+Author: Kyle Walker
+Date: 2023-04-24
+
+This module contains the Presenter class for the Safety IO GUI.
+The Presenter class is responsible for handling user input and 
+updating both the Model and the View accordingly.
+It is a middleman between the Model and View classes, ensuring
+decoupling between the two.
+"""
+
 from __future__ import annotations
 from typing import Protocol
 from model import Model

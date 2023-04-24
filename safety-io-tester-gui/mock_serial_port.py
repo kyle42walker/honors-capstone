@@ -1,3 +1,12 @@
+"""
+File: mock_serial_port.py
+Author: Kyle Walker
+Date: 2023-04-24
+
+This module contains the MockSerialPort class, which is used to simulate the
+Arduino's behavior when testing the GUI without an Arduino.
+"""
+
 import sys
 import random
 from serial import SerialException
