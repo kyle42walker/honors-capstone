@@ -3,6 +3,7 @@ from serial import SerialException, SerialTimeoutException
 import serial.tools.list_ports
 import logging
 from mock_serial_port import MockSerialPort
+from time import sleep
 
 
 BAUD_RATE = 115200  # Baud rate for serial communication
@@ -126,7 +127,7 @@ class Model:
         Raises:
             SerialException: if there is an error reading from the serial device
         """
-        response = self.serial.read(3).decode().strip()
+        response = self.serial.readline.decode().strip()
         # logger.debug(f"Response: '{response}'")
         return response == "OK"
 
@@ -137,6 +138,7 @@ class Model:
         Send data to the serial device in the following format:
         Index   Data byte
             0   R
+            1   \n
 
         Receive data from the serial device in the following format:
         Index   Data byte
@@ -160,7 +162,7 @@ class Model:
             17  (0|1) - Power B
             18  \n
 
-        e.g. "R" requests the output pin states and a response of "A10000010B01000010\n"
+        e.g. "R\n" requests the output pin states and a response of "A10000010B01000010\n"
         indicates Mode A1, Heartbeat A, Mode B2, and Heartbeat B are set
         and all other pins are cleared
 
@@ -170,15 +172,15 @@ class Model:
         """
         try:
             # Send request and get response
-            self.serial.write(b"R")
-            response = self.serial.read(19).decode().strip()
+            self.serial.write(b"R\n")
+            response = self.serial.readline.decode().strip()
 
         except (SerialException, SerialTimeoutException):
             self.disconnect_from_serial_port()
             return {}
 
         # Invalid response syntax
-        if response[0] != "A" or response[9] != "B":
+        if response[0] != "A" or response[9] != "B" or len(response) != 18:
             return {}
 
         # Parse response
@@ -211,8 +213,9 @@ class Model:
             2   (0|1) - Mode A2
             3   (0|1) - Mode B1
             4   (0|1) - Mode B2
+            5   \n
 
-        e.g. "M1001" sets bits A1 and B2, setting the controller to "Manual" mode
+        e.g. "M1001\n" sets bits A1 and B2, setting the controller to "Manual" mode
 
         mode_str: must be one of ["Automatic", "Stop", "Manual", "Mute"]
 
@@ -231,7 +234,7 @@ class Model:
                 mode_bits = ["0", "1", "0", "1"]
 
         # Send mode bits to the serial device
-        data = bytearray([ord("M")] + [ord(b) for b in mode_bits])
+        data = bytearray([ord("M")] + [ord(b) for b in mode_bits] + [ord("\n")])
         return self.write_data(data)
 
     def toggle_mode_bit(self, mode_bit: str) -> bool:
@@ -245,7 +248,8 @@ class Model:
             1   (0|1) - Mode A1
             2   (0|1) - Mode A2
             3   (0|1) - Mode B1
-            4   (0|1) - Mode B2
+            4   (0|1) - Mode
+            5   \n
 
         e.g. "M1001" sets bits A1 and B2, setting the controller to "Manual" mode
 
@@ -275,7 +279,7 @@ class Model:
                 mode_bits[3] = "1" if mode_bits[3] == "0" else "0"
 
         # Send mode bits to the serial device
-        data = bytearray([ord("M")] + [ord(b) for b in mode_bits])
+        data = bytearray([ord("M")] + [ord(b) for b in mode_bits] + [ord("\n")])
         return self.write_data(data)
 
     def toggle_estop(
@@ -301,6 +305,8 @@ class Model:
             6   (0-9)
             7   (0-9)
             8   (0-9)
+
+            3 | 9   \n
 
         e.g. "E10" sets e-stop A ON and B OFF simultaneously,
         "E11B00100" sets e-stop A ON 100 ms after e-stop B ON
@@ -338,7 +344,7 @@ class Model:
         else:
             e_stop_bits = [str(int(e_stop_a)), str(int(e_stop_b))]
 
-        data = bytearray([ord("E")] + [ord(b) for b in e_stop_bits])
+        data = bytearray([ord("E")] + [ord(b) for b in e_stop_bits] + [ord("\n")])
         return self.write_data(data)
 
     def toggle_interlock(
@@ -365,8 +371,10 @@ class Model:
             7   (0-9)
             8   (0-9)
 
-        e.g. "E10" sets interlock A ON and B OFF simultaneously,
-        "E11B00100" sets interlock A 100 ms after interlock B
+            3 | 9   \n
+
+        e.g. "I10" sets interlock A ON and B OFF simultaneously,
+        "I11B00100" sets interlock A 100 ms after interlock B
 
         toggle_interlock_a: True to toggle channel A, False to leave channel A unchanged
         toggle_interlock_b: True to toggle channel B, False to leave channel B unchanged
@@ -401,7 +409,7 @@ class Model:
         else:
             interlock_bits = [str(int(interlock_a)), str(int(interlock_b))]
 
-        data = bytearray([ord("I")] + [ord(b) for b in interlock_bits])
+        data = bytearray([ord("I")] + [ord(b) for b in interlock_bits] + [ord("\n")])
         return self.write_data(data)
 
     def toggle_power(self) -> bool:
@@ -412,6 +420,7 @@ class Model:
         Index   Data byte
             0   P
             1   (0|1) - Power
+            2   \n
 
         e.g. "P1" sets power ON, "P0" sets power OFF
 
@@ -424,11 +433,11 @@ class Model:
 
         # If device is powered on, turn it off
         if power[0] or power[1]:
-            data = bytearray([ord("P"), ord("0")])
+            data = bytearray([ord("P"), ord("0"), ord("\n")])
 
         # If device is powered off, turn it on
         else:
-            data = bytearray([ord("P"), ord("1")])
+            data = bytearray([ord("P"), ord("1"), ord("\n")])
 
         return self.write_data(data)
 
@@ -439,21 +448,22 @@ class Model:
         Send data to the serial device in the following format:
         Index   Data byte
             0   H
+            1   \n
 
         Receive data to the serial device in the following format:
         Index   Data byte
             0   A
-            1   X
-            2   X
-            3   X
-            4   X
-            5   X
+            1   (0-9)
+            2   (0-9)
+            3   (0-9)
+            4   (0-9)
+            5   (0-9)
             6   B
-            7   X
-            8   X
-            9   X
-            10  X
-            11  X
+            7   (0-9)
+            8   (0-9)
+            9   (0-9)
+            10  (0-9)
+            11  (0-9)
             12  \n
 
         e.g. "H" requesets the heartbeat and a response of "A00100B01234" indicates
@@ -465,14 +475,16 @@ class Model:
         """
         heartbeat_hz = None
         try:
-            self.serial.write(b"H")
+            self.serial.write(b"H\n")
             logger.info(f"Sent data: 'H'")
-            data = self.serial.read(13).decode().strip()
+            # Wait for serial device to measure heartbeat
+            sleep(1)
+            data = self.serial.readline.decode().strip()
             logger.info(f"Response: '{data}'")
         except SerialException:
             return None
 
-        if data[0] == "A" and data[6] == "B":
+        if data[0] == "A" and data[6] == "B" and len(data) == 12:
             try:
                 heartbeat_hz = (int(data[1:6]), int(data[7:12]))
             except ValueError:
