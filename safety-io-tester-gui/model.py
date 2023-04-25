@@ -137,7 +137,7 @@ class Model:
         Raises:
             SerialException: if there is an error reading from the serial device
         """
-        response = self.serial.readline.decode().strip()
+        response = self.serial.readline().decode().strip()
         # logger.debug(f"Response: '{response}'")
         return response == "OK"
 
@@ -183,7 +183,7 @@ class Model:
         try:
             # Send request and get response
             self.serial.write(b"R\n")
-            response = self.serial.readline.decode().strip()
+            response = self.serial.readline().decode().strip()
 
         except (SerialException, SerialTimeoutException):
             self.disconnect_from_serial_port()
@@ -489,7 +489,7 @@ class Model:
             logger.info(f"Sent data: 'H'")
             # Wait for serial device to measure heartbeat
             sleep(1)
-            data = self.serial.readline.decode().strip()
+            data = self.serial.readline().decode().strip()
             logger.info(f"Response: '{data}'")
         except SerialException:
             return None

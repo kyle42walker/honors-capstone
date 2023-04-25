@@ -31,6 +31,7 @@ class MockSerialPort:
         close: close the mock serial port
         write: write data to the mock serial port and simulate the Arduino's behavior
         read: read data from the mock serial port and simulate the Arduino's behavior
+        readline: read line from mock serial port and simulate the Arduino's behavior
     """
 
     def __init__(self):
@@ -71,9 +72,10 @@ class MockSerialPort:
 
     def write(self, data: bytes):
         """
-        Write data to stdout instead of to a serial port
+        Simulate writing to the serial port. If no command is recognized, write to
+        stdout instead of to a serial port
 
-        data: bytes to write to stdout
+        data: bytes to write to the serial port
 
         Raises:
             SerialException if the mock serial port is not open or if the data is
@@ -141,6 +143,34 @@ class MockSerialPort:
 
         else:
             return sys.stdin.read(size).encode()
+
+    def readline(self) -> bytes:
+        """
+        Simulate reading a line from the serial port
+
+        Returns:
+            bytes read ending in \n
+
+        Raises:
+            SerialException if the mock serial port is not open
+        """
+        if not self.is_open:
+            raise SerialException("Mock serial port is not open")
+
+        if self._expect_ok:
+            self._expect_ok = False
+            return b"OK\n"
+
+        elif self._read_requested:
+            self._read_requested = False
+            return self._encode_pin_states()
+
+        elif self._heartbeat_requested:
+            self._heartbeat_requested = False
+            return self._encode_heartbeat()
+
+        else:
+            return sys.stdin.readline().encode()
 
     def _encode_pin_states(self) -> bytes:
         """
@@ -223,7 +253,7 @@ class MockSerialPort:
         heartbeat_a = random.randint(5, 15)
         heartbeat_b = random.randint(5, 15)
 
-        return bytes(f"A{heartbeat_a:05d}B{heartbeat_b:05d}", "utf-8")
+        return bytes(f"A{heartbeat_a:05d}B{heartbeat_b:05d}\n", "utf-8")
 
     def _update_heartbeat(self):
         """
